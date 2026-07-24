@@ -57,8 +57,7 @@ async function main() {
   await viteBuild({ configFile: path.join(root, "vite.config.ts") });
 
   copyFile(path.join(root, "src/manifest.json"), path.join(dist, "manifest.json"));
-  // Icon stays with the original extension assets next to recreation/
-  copyFile(path.join(root, "../assets/icon.png"), path.join(dist, "assets/icon.png"));
+  copyFile(path.join(root, "src/assets/icon.png"), path.join(dist, "assets/icon.png"));
   copyFile(path.join(root, "src/assets/devtools.html"), path.join(dist, "assets/devtools.html"));
 
   // Chrome extension pages break on Vite's crossorigin attribute for module scripts.
