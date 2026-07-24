@@ -186,6 +186,109 @@ function isPowerOfTwo(n: number): boolean {
   return n > 0 && (n & (n - 1)) === 0;
 }
 
+function eventHandlerClass(): any {
+  return cc.Component?.EventHandler || cc.EventHandler || null;
+}
+
+function isEventHandlerClass(ctor: any): boolean {
+  if (!ctor) return false;
+  const EH = eventHandlerClass();
+  try {
+    if (EH && (ctor === EH || ctor.prototype instanceof EH)) return true;
+  } catch {
+    /* ignore */
+  }
+  return classNameOf(ctor.prototype) === "cc.ClickEvent";
+}
+
+function isEventHandler(obj: any): boolean {
+  if (!obj || typeof obj !== "object") return false;
+  try {
+    const EH = eventHandlerClass();
+    if (EH && obj instanceof EH) return true;
+  } catch {
+    /* ignore */
+  }
+  return obj.__classname__ === "cc.ClickEvent";
+}
+
+/** Method names on a component instance suitable for EventHandler.handler. */
+function listHandlerMethods(comp: any): string[] {
+  if (!comp) return [];
+  const skip = new Set([
+    "constructor",
+    "onLoad",
+    "onEnable",
+    "start",
+    "update",
+    "lateUpdate",
+    "onDisable",
+    "onDestroy",
+    "onFocusInEditor",
+    "onLostFocusInEditor",
+    "resetInEditor",
+    "onRestore",
+    "destroy",
+    "schedule",
+    "scheduleOnce",
+    "unschedule",
+    "unscheduleAllCallbacks",
+  ]);
+  const names: string[] = [];
+  let proto = Object.getPrototypeOf(comp);
+  while (proto && proto !== Object.prototype) {
+    for (const k of Object.getOwnPropertyNames(proto)) {
+      if (
+        typeof (comp as any)[k] === "function" &&
+        !k.startsWith("_") &&
+        !skip.has(k)
+      ) {
+        names.push(k);
+      }
+    }
+    proto = Object.getPrototypeOf(proto);
+  }
+  return Array.from(new Set(names));
+}
+
+function serializeEventHandler(eh: any): any {
+  const m = getMutator(eh) || (eh[symbolMutate] = new Mutator(eh));
+  let component = "";
+  try {
+    component = String(eh._componentName || eh.component || "");
+  } catch {
+    component = String(eh.component || "");
+  }
+  const target = eh.target;
+  const comps = target?.components || target?._components || [];
+  const componentOptions: string[] = [];
+  const handlerOptions: string[] = [];
+  for (const c of comps) {
+    const name = c?.__classname__;
+    if (name) componentOptions.push(String(name));
+  }
+  const matched = comps.find((c: any) => c?.__classname__ === component);
+  if (matched) handlerOptions.push(...listHandlerMethods(matched));
+  else if (eh.handler) handlerOptions.push(String(eh.handler));
+
+  return {
+    [VISITOR_KEY]: m.id,
+    target: serializeVisitorRef(target),
+    component,
+    handler: String(eh.handler || ""),
+    customEventData: String(eh.customEventData ?? ""),
+    componentOptions,
+    handlerOptions,
+  };
+}
+
+function resolveEventHandlerItemCtor(a: any, typeField: any): any {
+  if (Array.isArray(typeField) && typeField[0]) return typeField[0];
+  if (Array.isArray(a.ctor) && a.ctor[0]) return a.ctor[0];
+  if (a.ctor) return a.ctor;
+  return null;
+}
+
 /** Parse Cocos __attrs__ into inspector-friendly attribute list. */
 export function parseAttrs(target: any): { attrs: any[] } {
   const attrs: any[] = [];
@@ -229,8 +332,28 @@ export function parseAttrs(target: any): { attrs: any[] } {
       }
     }
     const f = a.type;
+    const arrVal = Array.isArray(cur)
+      ? cur
+      : Array.isArray(def)
+        ? def
+        : null;
+    const itemCtor = resolveEventHandlerItemCtor(a, f);
+    const isEhArray =
+      !!arrVal &&
+      (arrVal.some(isEventHandler) ||
+        isEventHandlerClass(itemCtor) ||
+        (Array.isArray(f) && isEventHandlerClass(f[0])) ||
+        ((a.name === "clickEvents" || a.name === "checkEvents") &&
+          arrVal.every((x: any) => x == null || isEventHandler(x))));
 
-    if (f) {
+    if (isEhArray) {
+      a.type = "eventHandlerArray";
+      a.typeName = "cc.ClickEvent";
+      if (!a.displayName || String(a.displayName).startsWith("i18n:")) {
+        a.displayName = "Click Events";
+      }
+      delete a.ctor;
+    } else if (f) {
       if (f === "Object") {
         const ctor = a.ctor;
         delete a.ctor;
@@ -351,6 +474,10 @@ export function parseAttrs(target: any): { attrs: any[] } {
     }
 
     const serialize = (val: any, meta: any): any => {
+      if (meta.type === "eventHandlerArray") {
+        const list = Array.isArray(val) ? val : [];
+        return list.filter(isEventHandler).map(serializeEventHandler);
+      }
       if (Array.isArray(val)) {
         return val.map((item) => {
           if (item && typeof item === "object") {
@@ -406,6 +533,7 @@ export function parseAttrs(target: any): { attrs: any[] } {
 function applyEditorVisibility(target: any, attrs: any[]) {
   const type = target?.__classname__;
   if (type === "cc.Sprite") applySpriteVisibility(target, attrs);
+  if (type === "cc.Button") applyButtonVisibility(target, attrs);
 }
 
 /**
@@ -427,6 +555,39 @@ function applySpriteVisibility(target: any, attrs: any[]) {
     }
     a.visible = filled;
     if (a.name === "fillCenter") a.readonly = !radial;
+  }
+}
+
+/**
+ * Mirror editor/inspector/components/button.js (Cocos 3.8):
+ * Transition NONE=0 COLOR=1 SPRITE=2 SCALE=3 — show only matching groups.
+ */
+function applyButtonVisibility(target: any, attrs: any[]) {
+  const t = target.transition;
+  const color = t === (cc.Button?.Transition?.COLOR ?? 1);
+  const sprite = t === (cc.Button?.Transition?.SPRITE ?? 2);
+  const scale = t === (cc.Button?.Transition?.SCALE ?? 3);
+  for (const a of attrs) {
+    switch (a.name) {
+      case "normalColor":
+      case "pressedColor":
+      case "hoverColor":
+      case "disabledColor":
+        a.visible = color;
+        break;
+      case "normalSprite":
+      case "pressedSprite":
+      case "hoverSprite":
+      case "disabledSprite":
+        a.visible = sprite;
+        break;
+      case "zoomScale":
+      case "duration":
+        a.visible = scale;
+        break;
+      default:
+        break;
+    }
   }
 }
 

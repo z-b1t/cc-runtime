@@ -9,7 +9,7 @@ import {
   Tooltip,
   message,
 } from "antd";
-import { ExportOutlined } from "@ant-design/icons";
+import { ExportOutlined, DeleteOutlined, ReloadOutlined } from "@ant-design/icons";
 import { callRpc, Rpc } from "../bridge/rpc";
 import { getState, setState, subscribe, type AppState } from "../store";
 import { selectNodeInPanel } from "../selectNode";
@@ -182,6 +182,149 @@ function plainToNewKey(next: Record<string, number>, typeName?: string) {
       args: [next.x || 0, next.y || 0, next.z || 0],
     },
   };
+}
+
+/** One Click Event row: Target / Component / Handler / CustomEventData. */
+function EventHandlerItem({
+  index,
+  event,
+  onRemove,
+}: {
+  index: number;
+  event: any;
+  onRemove: () => void;
+}) {
+  const eventId = event?.[VISITOR_KEY];
+  const [component, setComponent] = useState(String(event?.component || ""));
+  const [handler, setHandler] = useState(String(event?.handler || ""));
+  const [customData, setCustomData] = useState(
+    String(event?.customEventData ?? ""),
+  );
+
+  useEffect(() => {
+    setComponent(String(event?.component || ""));
+    setHandler(String(event?.handler || ""));
+    setCustomData(String(event?.customEventData ?? ""));
+  }, [event?.component, event?.handler, event?.customEventData]);
+
+  const commitField = async (name: string, value: any) => {
+    if (!eventId) return;
+    await callRpc(`mutatorSet-${eventId}`, { name, value });
+    await refreshNodeDetails();
+  };
+
+  const target = event?.target;
+  const targetVisitorId = target?.[VISITOR_KEY];
+  const targetName =
+    (target?.name && String(target.name).trim()) || "None";
+  const compOpts = Array.from(
+    new Set([
+      ...(event?.componentOptions || []),
+      ...(component ? [component] : []),
+    ]),
+  ).map((n) => ({ label: n, value: n }));
+  const handlerOpts = Array.from(
+    new Set([
+      ...(event?.handlerOptions || []),
+      ...(handler ? [handler] : []),
+    ]),
+  ).map((n) => ({ label: n, value: n }));
+
+  return (
+    <div className="event-handler-item">
+      <div className="event-handler-item-header">
+        <span className="event-handler-item-title">{`Event [${index}]`}</span>
+        <span className="event-handler-item-actions">
+          <Tooltip title="刷新">
+            <Button
+              type="text"
+              size="small"
+              icon={<ReloadOutlined />}
+              onClick={() => refreshNodeDetails()}
+            />
+          </Tooltip>
+          <Tooltip title="删除">
+            <Button
+              type="text"
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={onRemove}
+            />
+          </Tooltip>
+        </span>
+      </div>
+      <AttrLine title="Target">
+        <div
+          className={`attr-comp-input${targetVisitorId ? " filled clickable" : ""}`}
+          role={targetVisitorId ? "button" : undefined}
+          title={targetVisitorId ? `跳转到：${targetName}` : undefined}
+          onClick={
+            targetVisitorId
+              ? async () => {
+                  const resolved = (await callRpc(
+                    Rpc.resolveVisitor,
+                    targetVisitorId,
+                  )) as { nodeId?: string } | null;
+                  const nodeId = resolved?.nodeId;
+                  if (!nodeId) return;
+                  await selectNodeInPanel(nodeId);
+                  callRpc(Rpc.flashNode, nodeId).catch(() => {});
+                }
+              : undefined
+          }
+        >
+          <span className="type-tag">
+            <span className="text">cc.Node</span>
+          </span>
+          <span className="input">{targetVisitorId ? targetName : "None"}</span>
+        </div>
+      </AttrLine>
+      <AttrLine title="Component">
+        <Select
+          className="attr-select"
+          size="small"
+          value={component || undefined}
+          placeholder="None"
+          options={compOpts}
+          showSearch
+          allowClear
+          optionFilterProp="label"
+          onChange={async (v) => {
+            const next = v || "";
+            setComponent(next);
+            await commitField("_componentName", next);
+          }}
+        />
+      </AttrLine>
+      <AttrLine title="Handler">
+        <Select
+          className="attr-select"
+          size="small"
+          value={handler || undefined}
+          placeholder="None"
+          options={handlerOpts}
+          showSearch
+          allowClear
+          optionFilterProp="label"
+          onChange={async (v) => {
+            const next = v || "";
+            setHandler(next);
+            await commitField("handler", next);
+          }}
+        />
+      </AttrLine>
+      <AttrLine title="CustomEventData">
+        <Input
+          className="attr-input"
+          size="small"
+          value={customData}
+          onChange={(e) => setCustomData(e.target.value)}
+          onBlur={() => commitField("customEventData", customData)}
+        />
+      </AttrLine>
+    </div>
+  );
 }
 
 function AttrField({
@@ -416,6 +559,48 @@ function AttrField({
           ))}
         </div>
       );
+    case "eventHandlerArray": {
+      const list: any[] = Array.isArray(val) ? val : [];
+      const setLen = async (n: number) => {
+        await callRpc(`mutatorSet-${mutatorId}`, {
+          name: attr.name,
+          value: { __ccArrayLen: Math.max(0, n | 0) },
+        });
+        await refreshNodeDetails();
+      };
+      const removeAt = async (idx: number) => {
+        await callRpc(`mutatorSet-${mutatorId}`, {
+          name: attr.name,
+          value: { __ccArraySplice: idx },
+        });
+        await refreshNodeDetails();
+      };
+      return (
+        <div className="event-handler-array">
+          <div className="event-handler-array-title" title={tip}>
+            {title}
+          </div>
+          <AttrLine title="Count">
+            <InputNumber
+              className="attr-input-number"
+              size="small"
+              min={0}
+              step={1}
+              value={list.length}
+              onChange={(n) => setLen(Number(n) || 0)}
+            />
+          </AttrLine>
+          {list.map((ev, idx) => (
+            <EventHandlerItem
+              key={ev?.[VISITOR_KEY] || idx}
+              index={idx}
+              event={ev}
+              onRemove={() => removeAt(idx)}
+            />
+          ))}
+        </div>
+      );
+    }
     default:
       return (
         <AttrLine title={title} tooltip={tip}>

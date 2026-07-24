@@ -1,6 +1,8 @@
 import { NEW_KEY, VISITOR_KEY } from "../shared/protocol";
 import { registerHandler } from "./message";
 
+declare const cc: any;
+
 export const symbolMutate = Symbol("cc-runtime Mutate");
 const mutatorMap: Record<string, Mutator> = {};
 
@@ -57,6 +59,32 @@ export class Mutator {
           }
           this._target[name] = null;
           return this._target[name] === null;
+        }
+        // Resize EventHandler[] (e.g. Button.clickEvents Count).
+        if (isObject && typeof value.__ccArrayLen === "number") {
+          let arr = this._target[name];
+          if (!Array.isArray(arr)) {
+            arr = [];
+            this._target[name] = arr;
+          }
+          const len = Math.max(0, value.__ccArrayLen | 0);
+          const ItemCls =
+            (typeof cc !== "undefined" &&
+              (cc.Component?.EventHandler || cc.EventHandler)) ||
+            null;
+          while (arr.length < len) {
+            arr.push(ItemCls ? new ItemCls() : {});
+          }
+          if (arr.length > len) arr.length = len;
+          return true;
+        }
+        // Remove one item from EventHandler[] (trash on Event [i]).
+        if (isObject && typeof value.__ccArraySplice === "number") {
+          const arr = this._target[name];
+          if (!Array.isArray(arr)) return false;
+          const idx = value.__ccArraySplice | 0;
+          if (idx >= 0 && idx < arr.length) arr.splice(idx, 1);
+          return true;
         }
         if (isObject && NEW_KEY in value) {
           try {

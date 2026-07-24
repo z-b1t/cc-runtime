@@ -284,6 +284,49 @@
   margin-bottom: 2px;
 }
 
+.event-handler-array {
+  width: 100%;
+  margin: 4px 0;
+}
+
+.event-handler-array-title {
+  color: var(--cc-text);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 0 2px;
+}
+
+.event-handler-item {
+  padding: 4px 0 4px 8px;
+  margin: 4px 0;
+  border-left: 2px solid var(--cc-border-soft);
+  width: 100%;
+}
+
+.event-handler-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.event-handler-item-title {
+  color: var(--cc-text-muted);
+  font-size: 11px;
+}
+
+.event-handler-item-actions {
+  display: inline-flex;
+  gap: 0;
+}
+
+.event-handler-item-actions .ant-btn {
+  color: var(--cc-text-muted);
+  width: 22px;
+  height: 22px;
+  padding: 0;
+}
+
 /* Controls */
 .node-details .attr-input,
 .node-details .attr-input-number,
@@ -291,19 +334,48 @@
   width: 100%;
 }
 
+/* Flat text / number inputs */
 .node-details .ant-input,
-.node-details .ant-input-number,
-.node-details .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+.node-details .ant-input-number {
   background: var(--cc-bg-input) !important;
   border-color: var(--cc-border-soft) !important;
   color: var(--cc-text) !important;
   font-size: 12px !important;
   min-height: 22px !important;
+  box-shadow: none !important;
 }
 
 .node-details .ant-input-number-input {
   height: 22px !important;
   font-size: 12px !important;
+}
+
+/* Flat select — lighter fill to distinguish from inputs */
+.node-details .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+  background: var(--cc-bg-elevated) !important;
+  border-color: #555 !important;
+  color: var(--cc-text) !important;
+  font-size: 12px !important;
+  min-height: 22px !important;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+
+.node-details .ant-select-focused:not(.ant-select-customize-input) .ant-select-selector,
+.node-details .ant-select:not(.ant-select-disabled):hover .ant-select-selector {
+  border-color: var(--cc-accent) !important;
+  background: #3a3a3a !important;
+}
+
+.node-details .ant-select-arrow {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 10px;
+  right: 8px;
+}
+
+.node-details .ant-select-focused .ant-select-arrow,
+.node-details .ant-select:hover .ant-select-arrow {
+  color: var(--cc-accent);
 }
 
 .node-details .ant-checkbox-inner {
@@ -314,10 +386,6 @@
 .node-details .ant-checkbox-checked .ant-checkbox-inner {
   background: var(--cc-accent);
   border-color: var(--cc-accent);
-}
-
-.node-details .ant-select-arrow {
-  color: var(--cc-text-muted);
 }
 
 /* Color — Cocos Creator style picker */
