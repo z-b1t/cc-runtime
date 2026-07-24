@@ -15,6 +15,7 @@ import { getState, setState, subscribe, type AppState } from "../store";
 import { selectNodeInPanel } from "../selectNode";
 import { NEW_KEY, VISITOR_KEY } from "@shared/protocol";
 import { cleanFloat, formatFloatDisplay } from "@shared/number";
+import { ColorAttrField, packAbgr } from "./ColorPicker";
 
 const { Panel } = Collapse;
 
@@ -58,37 +59,6 @@ function enumOptions(list: any): { label: string; value: any }[] {
   return Object.entries(list)
     .filter(([k, v]) => Number.isNaN(Number(k)) && (typeof v === "number" || typeof v === "string"))
     .map(([k, v]) => ({ label: k, value: v as any }));
-}
-
-/** Decode Cocos Color._val (ABGR packed uint32) → #rrggbb */
-function colorToHex(val: any): string {
-  if (val == null) return "#ffffff";
-  if (typeof val === "number") {
-    const abgr = val >>> 0;
-    const r = abgr & 0xff;
-    const g = (abgr >>> 8) & 0xff;
-    const b = (abgr >>> 16) & 0xff;
-    return `#${[r, g, b].map((n) => n.toString(16).padStart(2, "0")).join("")}`;
-  }
-  if (typeof val === "object") {
-    if (typeof val._val === "number") return colorToHex(val._val);
-    if (typeof val.r === "number") {
-      const r = Math.round(val.r) & 0xff;
-      const g = Math.round(val.g) & 0xff;
-      const b = Math.round(val.b) & 0xff;
-      return `#${[r, g, b].map((n) => n.toString(16).padStart(2, "0")).join("")}`;
-    }
-  }
-  return "#ffffff";
-}
-
-function colorAlpha(val: any): number {
-  if (val && typeof val === "object") {
-    if (typeof val.a === "number") return Math.round(val.a) & 0xff;
-    if (typeof val._val === "number") return (val._val >>> 24) & 0xff;
-  }
-  if (typeof val === "number") return (val >>> 24) & 0xff;
-  return 255;
 }
 
 /** Cocos-style prop row: label 33% / control 67% */
@@ -340,40 +310,21 @@ function AttrField({
       );
     }
     case "color": {
-      const hex = colorToHex(val);
-      const alpha = colorAlpha(val);
       return (
         <AttrLine title={title} tooltip={tip}>
-          <label className="attr-color-picker">
-            <span
-              className="attr-color-swatch"
-              style={{ background: hex }}
-            />
-            <input
-              type="color"
-              value={hex}
-              onChange={async (e) => {
-                const h = e.target.value.replace("#", "");
-                const r = parseInt(h.slice(0, 2), 16) || 0;
-                const g = parseInt(h.slice(2, 4), 16) || 0;
-                const b = parseInt(h.slice(4, 6), 16) || 0;
-                const a = alpha;
-                const packed =
-                  ((a & 0xff) << 24) |
-                  ((b & 0xff) << 16) |
-                  ((g & 0xff) << 8) |
-                  (r & 0xff);
-                setVal({ _val: packed >>> 0, r, g, b, a });
-                await callRpc(`mutatorSet-${mutatorId}`, {
-                  name: attr.name,
-                  value: {
-                    [NEW_KEY]: { cls: "cc.Color", args: [r, g, b, a] },
-                  },
-                });
-                await refreshNodeDetails();
-              }}
-            />
-          </label>
+          <ColorAttrField
+            value={val}
+            onCommit={async (c) => {
+              setVal({ _val: packAbgr(c), ...c });
+              await callRpc(`mutatorSet-${mutatorId}`, {
+                name: attr.name,
+                value: {
+                  [NEW_KEY]: { cls: "cc.Color", args: [c.r, c.g, c.b, c.a] },
+                },
+              });
+              await refreshNodeDetails();
+            }}
+          />
         </AttrLine>
       );
     }

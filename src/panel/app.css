@@ -320,27 +320,35 @@
   color: var(--cc-text-muted);
 }
 
-/* Color — Cocos-like swatch */
-.attr-color-picker {
-  display: block;
+/* Color — Cocos Creator style picker */
+.attr-color-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   width: 100%;
+  min-width: 0;
+  height: 22px;
+}
+
+.attr-color-swatch-checker {
+  flex: 1 1 auto;
+  min-width: 72px;
   height: 22px;
   border: 1px solid var(--cc-border-soft);
   border-radius: 2px;
   overflow: hidden;
   cursor: pointer;
-  position: relative;
+  background-image: linear-gradient(45deg, #555 25%, transparent 25%),
+    linear-gradient(-45deg, #555 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #555 75%),
+    linear-gradient(-45deg, transparent 75%, #555 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+  background-color: #333;
 }
 
-.attr-color-picker input[type="color"] {
-  opacity: 0;
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  cursor: pointer;
-  border: none;
-  padding: 0;
+.attr-color-swatch-checker:hover {
+  border-color: orange;
 }
 
 .attr-color-swatch {
@@ -349,8 +357,295 @@
   height: 100%;
 }
 
-.attr-color-picker:hover {
-  border-color: orange;
+.attr-color-hex-inline {
+  flex: 0 0 78px;
+  width: 78px !important;
+  min-width: 78px;
+  font-size: 12px;
+  font-family: Consolas, monospace;
+}
+
+.attr-color-popover .ant-popover-inner-content {
+  padding: 8px;
+  background: #2a2a2a;
+}
+
+.attr-color-popover .ant-popover-arrow-content {
+  background: #2a2a2a;
+}
+
+.ccp {
+  width: 248px;
+  color: #ddd;
+  user-select: none;
+}
+
+.ccp-preview-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.ccp-preview-swatch-checker {
+  flex: 1;
+  height: 28px;
+  border: 1px solid #555;
+  border-radius: 2px;
+  overflow: hidden;
+  background-image: linear-gradient(45deg, #555 25%, transparent 25%),
+    linear-gradient(-45deg, #555 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #555 75%),
+    linear-gradient(-45deg, transparent 75%, #555 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+  background-color: #333;
+}
+
+.ccp-preview-swatch {
+  width: 100%;
+  height: 100%;
+}
+
+.ccp-hex-short {
+  width: 72px !important;
+  font-family: Consolas, monospace;
+  text-transform: uppercase;
+}
+
+.ccp-pick-row {
+  display: flex;
+  gap: 6px;
+  height: 140px;
+  margin-bottom: 10px;
+}
+
+.ccp-hue {
+  position: relative;
+  width: 14px;
+  flex-shrink: 0;
+  border: 1px solid #555;
+  border-radius: 1px;
+  cursor: pointer;
+  background: linear-gradient(
+    to bottom,
+    #ff0000 0%,
+    #ffff00 17%,
+    #00ff00 33%,
+    #00ffff 50%,
+    #0000ff 67%,
+    #ff00ff 83%,
+    #ff0000 100%
+  );
+}
+
+.ccp-hue-pointer {
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  height: 0;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.ccp-hue-pointer::before,
+.ccp-hue-pointer::after {
+  content: "";
+  position: absolute;
+  top: -4px;
+  border: 4px solid transparent;
+}
+
+.ccp-hue-pointer::before {
+  left: -5px;
+  border-left-color: #fff;
+}
+
+.ccp-hue-pointer::after {
+  right: -5px;
+  border-right-color: #fff;
+}
+
+.ccp-sv-wrap {
+  position: relative;
+  flex: 1;
+  border: 1px solid #555;
+  border-radius: 1px;
+  overflow: hidden;
+  cursor: crosshair;
+}
+
+.ccp-sv {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.ccp-sv-cursor {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border: 1.5px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #000;
+  pointer-events: none;
+}
+
+.ccp-alpha {
+  position: relative;
+  width: 14px;
+  flex-shrink: 0;
+  border: 1px solid #555;
+  border-radius: 1px;
+  cursor: pointer;
+  background-image: linear-gradient(45deg, #666 25%, transparent 25%),
+    linear-gradient(-45deg, #666 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #666 75%),
+    linear-gradient(-45deg, transparent 75%, #666 75%);
+  background-size: 6px 6px;
+  background-position: 0 0, 0 3px, 3px -3px, -3px 0;
+  background-color: #222;
+}
+
+.ccp-alpha-fill {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ccp-alpha-pointer {
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  height: 0;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.ccp-alpha-pointer::before,
+.ccp-alpha-pointer::after {
+  content: "";
+  position: absolute;
+  top: -4px;
+  border: 4px solid transparent;
+}
+
+.ccp-alpha-pointer::before {
+  left: -5px;
+  border-left-color: #fff;
+}
+
+.ccp-alpha-pointer::after {
+  right: -5px;
+  border-right-color: #fff;
+}
+
+.ccp-channels {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ccp-channel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ccp-channel-badge {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  border-radius: 2px;
+}
+
+.ccp-channel-badge.is-r {
+  background: #c0392b;
+}
+.ccp-channel-badge.is-g {
+  background: #27ae60;
+}
+.ccp-channel-badge.is-b {
+  background: #2980b9;
+}
+.ccp-channel-badge.is-a {
+  background: #555;
+}
+
+.ccp-channel-slider {
+  flex: 1;
+  margin: 0 !important;
+}
+
+.ccp-channel-slider .ant-slider-rail {
+  background: #444;
+}
+
+.ccp-channel-slider .ant-slider-track {
+  background: #888;
+}
+
+.ccp-channel-slider .ant-slider-handle {
+  border-color: #aaa;
+  background: #888;
+}
+
+.ccp-channel-num {
+  width: 52px !important;
+}
+
+.ccp-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.ccp-compare {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.ccp-compare-checker {
+  width: 22px;
+  height: 22px;
+  border: 1px solid #555;
+  overflow: hidden;
+  background-image: linear-gradient(45deg, #555 25%, transparent 25%),
+    linear-gradient(-45deg, #555 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #555 75%),
+    linear-gradient(-45deg, transparent 75%, #555 75%);
+  background-size: 6px 6px;
+  background-position: 0 0, 0 3px, 3px -3px, -3px 0;
+  background-color: #333;
+}
+
+.ccp-compare-checker + .ccp-compare-checker {
+  border-left: none;
+}
+
+.ccp-compare-checker > span {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.ccp-hex-label {
+  font-size: 11px;
+  color: #aaa;
+  white-space: nowrap;
+}
+
+.ccp-hex-full {
+  flex: 1;
+  min-width: 0;
+  font-family: Consolas, monospace;
 }
 
 /* Object / asset reference slot */
