@@ -458,77 +458,157 @@ function AttrField({
   }
 }
 
+/** Cocos 3.8.8 Label inspector attrs (order + visibility). */
+function buildLabelAttrs(data: any): any[] {
+  const useSystemFont = !!data.useSystemFont;
+  const isBMFont = !!data.isBMFont;
+  const isUnderline = !!data.isUnderline;
+  const enableOutline = !!data.enableOutline;
+  const enableShadow = !!data.enableShadow;
+  const cacheChar =
+    data.cacheMode === (data.cacheModeMap?.CHAR ?? 2);
+  const notBMFont = !isBMFont;
+  const shadowVisible = enableShadow && notBMFont && !cacheChar;
+
+  return [
+    {
+      name: "customMaterial",
+      type: "object",
+      typeName: "cc.Material",
+      default: data.customMaterial,
+    },
+    { name: "color", type: "color", typeName: "cc.Color", default: data.color },
+    { name: "string", type: "string", default: data.string ?? "" },
+    {
+      name: "horizontalAlign",
+      type: "enum",
+      enumList: data.horizontalAlignMap,
+      default: data.horizontalAlign,
+    },
+    {
+      name: "verticalAlign",
+      type: "enum",
+      enumList: data.verticalAlignMap,
+      default: data.verticalAlign,
+    },
+    {
+      name: "actualFontSize",
+      type: "number",
+      default: data.actualFontSize,
+      readonly: true,
+      step: 1,
+    },
+    { name: "fontSize", type: "number", default: data.fontSize, step: 1 },
+    {
+      name: "fontFamily",
+      type: "string",
+      default: data.fontFamily ?? "",
+      visible: useSystemFont,
+    },
+    { name: "lineHeight", type: "number", default: data.lineHeight, step: 1 },
+    {
+      name: "spacingX",
+      type: "number",
+      default: data.spacingX,
+      visible: !useSystemFont && isBMFont,
+      step: 1,
+    },
+    {
+      name: "overflow",
+      type: "enum",
+      enumList: data.overflowMap,
+      default: data.overflow,
+    },
+    {
+      name: "enableWrapText",
+      type: "boolean",
+      default: data.enableWrapText,
+    },
+    {
+      name: "font",
+      type: "object",
+      typeName: "cc.Font",
+      default: data.font,
+      visible: !useSystemFont,
+    },
+    {
+      name: "useSystemFont",
+      type: "boolean",
+      default: data.useSystemFont,
+    },
+    {
+      name: "cacheMode",
+      type: "enum",
+      enumList: data.cacheModeMap,
+      default: data.cacheMode,
+    },
+    { name: "isBold", type: "boolean", default: data.isBold },
+    { name: "isItalic", type: "boolean", default: data.isItalic },
+    { name: "isUnderline", type: "boolean", default: data.isUnderline },
+    {
+      name: "underlineHeight",
+      type: "number",
+      default: data.underlineHeight,
+      visible: isUnderline,
+      step: 1,
+    },
+    {
+      name: "enableOutline",
+      type: "boolean",
+      default: data.enableOutline,
+      visible: notBMFont,
+    },
+    {
+      name: "outlineColor",
+      type: "color",
+      typeName: "cc.Color",
+      default: data.outlineColor,
+      visible: enableOutline && notBMFont,
+    },
+    {
+      name: "outlineWidth",
+      type: "number",
+      default: data.outlineWidth,
+      visible: enableOutline && notBMFont,
+      step: 0.1,
+    },
+    {
+      name: "enableShadow",
+      type: "boolean",
+      default: data.enableShadow,
+      visible: notBMFont && !cacheChar,
+    },
+    {
+      name: "shadowColor",
+      type: "color",
+      typeName: "cc.Color",
+      default: data.shadowColor,
+      visible: shadowVisible,
+    },
+    {
+      name: "shadowOffset",
+      type: "valueMap",
+      typeName: "cc.Vec2",
+      default: data.shadowOffset,
+      visible: shadowVisible,
+    },
+    {
+      name: "shadowBlur",
+      type: "number",
+      default: data.shadowBlur,
+      visible: shadowVisible,
+      step: 0.1,
+    },
+  ];
+}
+
 function LabelInspector({ data, id }: { data: any; id: string }) {
+  const attrs = useMemo(() => buildLabelAttrs(data), [data]);
   return (
     <div className="label-panel">
-      <AttrLine title="String">
-        <Input
-          className="attr-input"
-          size="small"
-          defaultValue={data.string}
-          onBlur={(e) =>
-            callRpc(`mutatorSet-${id}`, { name: "string", value: e.target.value })
-          }
-        />
-      </AttrLine>
-      <AttrLine title="FontSize">
-        <InputNumber
-          className="attr-input-number"
-          size="small"
-          defaultValue={data.fontSize}
-          onChange={(n) =>
-            callRpc(`mutatorSet-${id}`, { name: "fontSize", value: Number(n) })
-          }
-        />
-      </AttrLine>
-      <AttrLine title="UseSystemFont">
-        <Checkbox
-          defaultChecked={data.useSystemFont}
-          onChange={(e) =>
-            callRpc(`mutatorSet-${id}`, {
-              name: "useSystemFont",
-              value: e.target.checked,
-            })
-          }
-        />
-      </AttrLine>
-      <AttrLine title="FontStyle">
-        <div className="attr-inline-checks">
-          <Checkbox
-            defaultChecked={data.fontStyle?.isBold}
-            onChange={(e) =>
-              callRpc(`mutatorSet-${id}`, {
-                name: "isBold",
-                value: e.target.checked,
-              })
-            }
-          >
-            B
-          </Checkbox>
-          <Checkbox
-            defaultChecked={data.fontStyle?.isItalic}
-            onChange={(e) =>
-              callRpc(`mutatorSet-${id}`, {
-                name: "isItalic",
-                value: e.target.checked,
-              })
-            }
-          >
-            I
-          </Checkbox>
-          <Checkbox
-            defaultChecked={data.fontStyle?.isUnderline}
-            onChange={(e) =>
-              callRpc(`mutatorSet-${id}`, {
-                name: "isUnderline",
-                value: e.target.checked,
-              })
-            }
-          >
-            U
-          </Checkbox>
-        </div>
-      </AttrLine>
+      {attrs.map((a) => (
+        <AttrField key={a.name} attr={a} mutatorId={id} />
+      ))}
     </div>
   );
 }

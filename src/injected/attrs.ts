@@ -400,9 +400,11 @@ export const specialSerializers: Record<string, (comp: any) => any> = {
       string,
       horizontalAlign,
       verticalAlign,
+      actualFontSize,
       fontSize,
       fontFamily,
       lineHeight,
+      spacingX,
       overflow,
       enableWrapText,
       font,
@@ -411,33 +413,63 @@ export const specialSerializers: Record<string, (comp: any) => any> = {
       isBold,
       isItalic,
       isUnderline,
+      underlineHeight,
+      enableOutline,
+      outlineColor,
+      outlineWidth,
+      enableShadow,
+      shadowColor,
+      shadowOffset,
+      shadowBlur,
     } = n;
     const ensure = (obj: any) => {
       if (!obj) return { [VISITOR_KEY]: undefined };
       const m = getMutator(obj) || (obj[symbolMutate] = new Mutator(obj));
       return { [VISITOR_KEY]: m.id };
     };
+    const Label = cc.LabelComponent || cc.Label;
+    const isBMFont = !!(
+      font &&
+      (cc.BitmapFont
+        ? font instanceof cc.BitmapFont
+        : classNameOf(font) === "cc.BitmapFont")
+    );
     return {
       customMaterial: ensure(customMaterial),
       color: serializeValue(color, "cc.Color"),
       string,
       horizontalAlign,
+      horizontalAlignMap: serializeValue(
+        Label?.HorizontalAlign || cc.HorizontalTextAlignment,
+      ),
       verticalAlign,
+      verticalAlignMap: serializeValue(
+        Label?.VerticalAlign || cc.VerticalTextAlignment,
+      ),
+      actualFontSize,
       fontSize,
       fontFamily,
       lineHeight,
+      spacingX,
       overflow,
-      overflowMap: serializeValue(
-        cc.LabelComponent?.Overflow || cc.Label?.Overflow,
-      ),
+      overflowMap: serializeValue(Label?.Overflow),
       enableWrapText,
       font: ensure(font),
       useSystemFont,
+      isBMFont,
       cacheMode,
-      cacheModeMap: serializeValue(
-        cc.LabelComponent?.CacheMode || cc.Label?.CacheMode,
-      ),
-      fontStyle: { isBold, isItalic, isUnderline },
+      cacheModeMap: serializeValue(Label?.CacheMode),
+      isBold,
+      isItalic,
+      isUnderline,
+      underlineHeight,
+      enableOutline,
+      outlineColor: serializeValue(outlineColor, "cc.Color"),
+      outlineWidth,
+      enableShadow,
+      shadowColor: serializeValue(shadowColor, "cc.Color"),
+      shadowOffset: serializeValue(shadowOffset, "cc.Vec2"),
+      shadowBlur,
     };
   },
   "cc.Widget": (n) => {
