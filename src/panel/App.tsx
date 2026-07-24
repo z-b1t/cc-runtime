@@ -19,6 +19,7 @@ import {
   waitForEvent,
 } from "./bridge/rpc";
 import { collectIds, getState, setState, subscribe } from "./store";
+import { selectNodeInPanel } from "./selectNode";
 import { NodeTree } from "./panels/NodeTree";
 import { NodeDetails } from "./panels/NodeDetails";
 import "golden-layout/dist/css/goldenlayout-base.css";
@@ -107,9 +108,7 @@ export function App() {
       const scene = getState().scene;
       const match = findByUuid(scene, String(uuid));
       if (match) {
-        setState({ selectedId: match.id, details: null });
-        const details = await callRpc(Rpc.getNodeDetails, match.id);
-        setState({ details: details as any });
+        await selectNodeInPanel(match.id);
       }
     });
     onEvent(Event.updateTransform, (payload: any) => {
@@ -148,7 +147,7 @@ export function App() {
     onEvent(Event.assetsClear, () => setState({ assets: {} }));
     onEvent("tabReloaded", () => {
       message.loading({ content: "页面正在刷新，请稍等...", key: "inj", duration: 0 });
-      setState({ injecting: true, scene: null, details: null, selectedId: null });
+      setState({ injecting: true, scene: null, details: null, selectedId: null, flashNodeId: null });
       bootstrap();
     });
 

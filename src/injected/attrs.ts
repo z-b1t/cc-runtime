@@ -1,8 +1,51 @@
 import { cleanFloat } from "../shared/number";
 import { VISITOR_KEY } from "../shared/protocol";
+import { assetName } from "./assets";
 import { getMutator, Mutator, symbolMutate } from "./mutator";
 
 declare const cc: any;
+
+/** Display name for inspector object refs (node / component → node name, asset → file name). */
+export function objectRefName(obj: any): string {
+  if (!obj) return "";
+  try {
+    if (typeof cc.Scene === "function" && obj instanceof cc.Scene) {
+      return String(obj.name || "Scene");
+    }
+    if (obj instanceof cc.Node) {
+      return String(obj.name || "");
+    }
+    if (typeof cc.Component === "function" && obj instanceof cc.Component) {
+      return String(obj.node?.name || obj.__classname__ || "");
+    }
+    if (obj.node && obj.node instanceof cc.Node) {
+      return String(obj.node.name || obj.__classname__ || "");
+    }
+    if (typeof cc.Asset === "function" && obj instanceof cc.Asset) {
+      return assetName(obj) || "";
+    }
+    if (typeof cc.SpriteFrame === "function" && obj instanceof cc.SpriteFrame) {
+      return assetName(obj) || String(obj.name || "");
+    }
+  } catch {
+    /* ignore */
+  }
+  if (typeof obj.name === "string" && obj.name) return obj.name;
+  if (typeof obj.url === "string" && obj.url) {
+    return obj.url.split("/").pop() || obj.url;
+  }
+  return String(obj.__classname__ || "");
+}
+
+/** Wire format for object references in the inspector. */
+export function serializeVisitorRef(obj: any): {
+  [VISITOR_KEY]: string | undefined;
+  name?: string;
+} {
+  if (!obj) return { [VISITOR_KEY]: undefined };
+  const m = getMutator(obj) || (obj[symbolMutate] = new Mutator(obj));
+  return { [VISITOR_KEY]: m.id, name: objectRefName(obj) };
+}
 
 function isValueType(sample: any): boolean {
   try {
@@ -311,10 +354,7 @@ export function parseAttrs(target: any): { attrs: any[] } {
       if (Array.isArray(val)) {
         return val.map((item) => {
           if (item && typeof item === "object") {
-            const m =
-              getMutator(item) ||
-              (item[symbolMutate] = new Mutator(item));
-            return { [VISITOR_KEY]: m.id };
+            return serializeVisitorRef(item);
           }
           return item;
         });
@@ -322,9 +362,7 @@ export function parseAttrs(target: any): { attrs: any[] } {
       if (val == null) return val;
       switch (meta.type) {
         case "object": {
-          const m =
-            getMutator(val) || (val[symbolMutate] = new Mutator(val));
-          return { [VISITOR_KEY]: m.id };
+          return serializeVisitorRef(val);
         }
         case "sub":
           return (meta.subAttrs || []).reduce((o: any, s: any) => {
@@ -422,11 +460,7 @@ export const specialSerializers: Record<string, (comp: any) => any> = {
       shadowOffset,
       shadowBlur,
     } = n;
-    const ensure = (obj: any) => {
-      if (!obj) return { [VISITOR_KEY]: undefined };
-      const m = getMutator(obj) || (obj[symbolMutate] = new Mutator(obj));
-      return { [VISITOR_KEY]: m.id };
-    };
+    const ensure = (obj: any) => serializeVisitorRef(obj);
     const Label = cc.LabelComponent || cc.Label;
     const isBMFont = !!(
       font &&
@@ -489,11 +523,7 @@ export const specialSerializers: Record<string, (comp: any) => any> = {
       target,
       alignMode,
     } = n;
-    const ensure = (obj: any) => {
-      if (!obj) return { [VISITOR_KEY]: undefined };
-      const m = getMutator(obj) || (obj[symbolMutate] = new Mutator(obj));
-      return { [VISITOR_KEY]: m.id };
-    };
+    const ensure = (obj: any) => serializeVisitorRef(obj);
     return {
       isAlignTop,
       isAlignVerticalCenter,

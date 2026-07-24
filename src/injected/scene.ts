@@ -3,7 +3,7 @@ import { cleanFloat } from "../shared/number";
 import { Event, Rpc } from "../shared/protocol";
 import { serializeComponent } from "./attrs";
 import { registerHandler, sendEvent } from "./message";
-import { Mutator, symbolMutate } from "./mutator";
+import { getMutatorById, Mutator, symbolMutate } from "./mutator";
 
 declare const cc: any;
 
@@ -206,6 +206,77 @@ export function hookScene() {
   registerHandler(Rpc.stopInspectNode, () => {
     stopInspect?.();
     stopInspect = null;
+  });
+
+  registerHandler(Rpc.resolveVisitor, (visitorId: any) => {
+    const id = String(visitorId || "");
+    if (!id) return null;
+    const target = getMutatorById(id)?.target;
+    if (!target) return null;
+
+    let node: any = null;
+    if (typeof cc.Scene === "function" && target instanceof cc.Scene) {
+      node = target;
+    } else if (target instanceof cc.Node) {
+      node = target;
+    } else if (
+      typeof cc.Component === "function" &&
+      target instanceof cc.Component &&
+      target.node
+    ) {
+      node = target.node;
+    } else if (target.node && target.node instanceof cc.Node) {
+      // Fallback for Component-like objects without instanceof match.
+      node = target.node;
+    }
+    if (!node || (node.isValid === false)) return null;
+
+    let m = node[symbolMutate] as Mutator | undefined;
+    if (!m) {
+      m = new Mutator(node);
+      node[symbolMutate] = m;
+      nodeMutators[m.id] = m;
+    } else if (!nodeMutators[m.id]) {
+      nodeMutators[m.id] = m;
+    }
+    return { nodeId: m.id };
+  });
+
+  registerHandler(Rpc.flashNode, async (nodeId: any) => {
+    const node = nodeMutators[String(nodeId || "")]?.target;
+    if (!node || !(node instanceof cc.Node) || node.isValid === false) return;
+
+    let uiOp = cc.UIOpacity ? node.getComponent(cc.UIOpacity) : null;
+    let added = false;
+    if (!uiOp && cc.UIOpacity) {
+      uiOp = node.addComponent(cc.UIOpacity);
+      added = true;
+    }
+    // Legacy / non-UI fallback.
+    const useNodeOpacity = !uiOp && typeof node.opacity === "number";
+    if (!uiOp && !useNodeOpacity) return;
+
+    const getOp = () => (uiOp ? uiOp.opacity : node.opacity);
+    const setOp = (v: number) => {
+      if (uiOp) uiOp.opacity = v;
+      else node.opacity = v;
+    };
+    const original = getOp();
+    const pulses = [80, original, 80, original, 80, original];
+    for (const next of pulses) {
+      if (!node.isValid) return;
+      setOp(next);
+      await new Promise((r) => setTimeout(r, 80));
+    }
+    if (!node.isValid) return;
+    setOp(original);
+    if (added && uiOp) {
+      try {
+        node.removeComponent(uiOp);
+      } catch {
+        /* ignore */
+      }
+    }
   });
 
   registerHandler(Rpc.getNodeDetails, (id: any) => {

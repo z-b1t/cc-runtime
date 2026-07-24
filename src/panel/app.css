@@ -407,6 +407,32 @@
   border-color: orange;
 }
 
+.attr-comp-input.clickable {
+  cursor: pointer;
+}
+
+.attr-comp-input.clickable:active {
+  border-color: #fa8c16;
+}
+
+.tree-node-title.is-flashing {
+  animation: tree-node-flash 0.3s ease-in-out 3;
+  border-radius: 2px;
+  padding: 0 4px;
+}
+
+@keyframes tree-node-flash {
+  0%,
+  100% {
+    background: transparent;
+    color: inherit;
+  }
+  50% {
+    background: rgba(250, 140, 22, 0.55);
+    color: #fff;
+  }
+}
+
 .footer {
   flex-shrink: 0;
   padding: 4px 12px;

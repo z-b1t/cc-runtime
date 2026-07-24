@@ -8,6 +8,7 @@ export type AppState = {
   details: NodeDetails | null;
   search: string;
   expandedKeys: string[];
+  flashNodeId: string | null;
   assets: Record<string, any>;
 };
 
@@ -21,6 +22,7 @@ let state: AppState = {
   details: null,
   search: "",
   expandedKeys: [],
+  flashNodeId: null,
   assets: {},
 };
 
@@ -56,6 +58,22 @@ export function findNode(
   for (const c of node.children || []) {
     const f = findNode(c, id);
     if (f) return f;
+  }
+  return null;
+}
+
+/** Ancestor ids from root to parent of `id` (not including `id`). */
+export function findPathIds(
+  node: SceneNodeData | null | undefined,
+  id: string,
+  path: string[] = [],
+): string[] | null {
+  if (!node) return null;
+  if (node.id === id) return path;
+  const next = [...path, node.id];
+  for (const c of node.children || []) {
+    const found = findPathIds(c, id, next);
+    if (found) return found;
   }
   return null;
 }

@@ -16,6 +16,8 @@ function assetName(asset: any): string {
   return raw?.split("/").pop() || raw;
 }
 
+export { assetName };
+
 function wrapAsset(asset: any, key: string) {
   if (!asset?.isValid) return undefined;
   if (!asset[symbolMutate]) {

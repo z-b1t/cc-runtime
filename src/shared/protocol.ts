@@ -22,6 +22,8 @@ export const Rpc = {
   logNode: "logNode",
   log: "log",
   assetsGetAll: "assets::getAll",
+  resolveVisitor: "resolveVisitor",
+  flashNode: "flashNode",
 } as const;
 
 export const Event = {

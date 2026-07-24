@@ -11,13 +11,25 @@ import {
   type AppState,
 } from "../store";
 import type { SceneNodeData } from "@shared/protocol";
+import { selectNodeInPanel } from "../selectNode";
 
-function toTreeData(node: SceneNodeData): DataNode {
+function toTreeData(
+  node: SceneNodeData,
+  flashNodeId: string | null,
+): DataNode {
   return {
     key: node.id,
-    title: node.name || "<Unnamed>",
+    title: (
+      <span
+        className={
+          flashNodeId === node.id ? "tree-node-title is-flashing" : "tree-node-title"
+        }
+      >
+        {node.name || "<Unnamed>"}
+      </span>
+    ),
     disableCheckbox: false,
-    children: (node.children || []).map(toTreeData),
+    children: (node.children || []).map((c) => toTreeData(c, flashNodeId)),
   };
 }
 
@@ -37,8 +49,8 @@ export function NodeTree() {
     [snap.scene, snap.search],
   );
   const treeData = useMemo(
-    () => (filtered ? [toTreeData(filtered)] : []),
-    [filtered],
+    () => (filtered ? [toTreeData(filtered, snap.flashNodeId)] : []),
+    [filtered, snap.flashNodeId],
   );
   const checkedKeys = useMemo(
     () => collectChecked(snap.scene),
@@ -48,18 +60,7 @@ export function NodeTree() {
   const onSelect = useCallback(async (keys: React.Key[]) => {
     const id = String(keys[0] || "");
     if (!id) return;
-    setState({ selectedId: id, details: null });
-    try {
-      const details = await callRpc(Rpc.getNodeDetails, id);
-      if (getState().selectedId !== id) return;
-      setState({ details: (details as any) || null });
-      if (!details) {
-        message.warning("无法获取节点详情");
-      }
-    } catch (err) {
-      console.error(err);
-      message.error("获取节点详情失败");
-    }
+    await selectNodeInPanel(id, { flash: false });
   }, []);
 
   const onCheck = useCallback(

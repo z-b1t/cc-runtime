@@ -12,6 +12,7 @@ import {
 import { ExportOutlined } from "@ant-design/icons";
 import { callRpc, Rpc } from "../bridge/rpc";
 import { getState, setState, subscribe, type AppState } from "../store";
+import { selectNodeInPanel } from "../selectNode";
 import { NEW_KEY, VISITOR_KEY } from "@shared/protocol";
 import { cleanFloat, formatFloatDisplay } from "@shared/number";
 
@@ -415,21 +416,42 @@ function AttrField({
         </AttrLine>
       );
     }
-    case "object":
+    case "object": {
+      const visitorId = val?.[VISITOR_KEY];
+      const jumpable = !!visitorId;
+      const displayName =
+        (val?.name && String(val.name).trim()) ||
+        attr.typeName ||
+        "Object";
       return (
         <AttrLine title={title} tooltip={tip}>
           <div
-            className={`attr-comp-input${val?.[VISITOR_KEY] ? " filled" : ""}`}
+            className={`attr-comp-input${jumpable ? " filled clickable" : ""}`}
+            role={jumpable ? "button" : undefined}
+            title={jumpable ? `跳转到：${displayName}` : undefined}
+            onClick={
+              jumpable
+                ? async () => {
+                    const resolved = (await callRpc(
+                      Rpc.resolveVisitor,
+                      visitorId,
+                    )) as { nodeId?: string } | null;
+                    const nodeId = resolved?.nodeId;
+                    if (!nodeId) return;
+                    await selectNodeInPanel(nodeId);
+                    callRpc(Rpc.flashNode, nodeId).catch(() => {});
+                  }
+                : undefined
+            }
           >
             <span className="type-tag">
               <span className="text">{attr.typeName || "Object"}</span>
             </span>
-            <span className="input">
-              {val?.[VISITOR_KEY] ? String(val[VISITOR_KEY]).slice(0, 8) : "None"}
-            </span>
+            <span className="input">{jumpable ? displayName : "None"}</span>
           </div>
         </AttrLine>
       );
+    }
     case "sub":
       return (
         <div className="custom-sub-attr">
