@@ -1,0 +1,438 @@
+.cc-runtime-app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #000;
+  color: hsla(0, 0%, 100%, 0.85);
+  overflow: hidden;
+  position: relative;
+}
+
+.layout-host {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  width: 100%;
+}
+
+.layout-host .lm_goldenlayout {
+  height: 100%;
+}
+
+.gl-react-host {
+  height: 100%;
+  overflow: auto;
+  background: #2a2a2a;
+}
+
+.panel-body {
+  padding: 8px 12px;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: auto;
+}
+
+/* —— Cocos Creator 3.8.x Inspector look —— */
+.node-details {
+  --cc-bg: #2a2a2a;
+  --cc-bg-elevated: #333333;
+  --cc-bg-input: #1b1b1b;
+  --cc-border: #1a1a1a;
+  --cc-border-soft: #434343;
+  --cc-text: rgba(255, 255, 255, 0.85);
+  --cc-text-muted: rgba(255, 255, 255, 0.55);
+  --cc-accent: #00a6ff;
+  --cc-x: #f44336;
+  --cc-y: #8bc34a;
+  --cc-z: #2196f3;
+  --cc-w: #ff9800;
+  --cc-row: 24px;
+  --cc-font: 12px;
+
+  height: 100%;
+  overflow: auto;
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px 16px;
+  background: var(--cc-bg);
+  color: var(--cc-text);
+  font-size: var(--cc-font);
+}
+
+.node-details .empty {
+  align-items: center;
+  display: flex;
+  height: 100%;
+  justify-content: center;
+  color: var(--cc-text-muted);
+}
+
+.node-details .name-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 4px 2px;
+}
+
+.node-details .name-bar .name-input {
+  flex: 1;
+  background: var(--cc-bg-input) !important;
+  border-color: var(--cc-border-soft) !important;
+  color: var(--cc-text) !important;
+}
+
+.node-details .root-attrs {
+  padding: 0 4px 6px;
+}
+
+/* Section (Node / Component) */
+.attr-panel {
+  margin-top: 4px;
+  position: relative;
+}
+
+.attr-panel .ant-collapse {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.attr-panel .ant-collapse > .ant-collapse-item {
+  border: 1px solid var(--cc-border);
+  border-radius: 0;
+  margin-bottom: 2px;
+  background: var(--cc-bg-elevated);
+}
+
+.attr-panel .ant-collapse > .ant-collapse-item > .ant-collapse-header {
+  padding: 4px 8px !important;
+  align-items: center !important;
+  color: var(--cc-text) !important;
+  line-height: var(--cc-row) !important;
+  background: #3a3a3a;
+  min-height: 28px;
+}
+
+.attr-panel .ant-collapse-content {
+  background: var(--cc-bg);
+  border-top: 1px solid var(--cc-border) !important;
+  color: var(--cc-text);
+}
+
+.attr-panel .ant-collapse-content > .ant-collapse-content-box {
+  padding: 4px 8px 8px !important;
+}
+
+.attr-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+}
+
+.attr-panel-header-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.attr-panel-title {
+  font-weight: 600;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attr-panel .export-button {
+  color: var(--cc-text-muted) !important;
+  opacity: 0.55;
+}
+
+.attr-panel:hover .export-button {
+  opacity: 1;
+}
+
+/* Prop row — matches Cocos ui-prop / original .attr-line */
+.attr-line {
+  align-items: center;
+  display: flex;
+  position: relative;
+  min-height: var(--cc-row);
+  margin: 2px 0;
+  gap: 4px;
+}
+
+.attr-line-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 33%;
+  flex-shrink: 0;
+  color: var(--cc-text-muted);
+  font-size: 12px;
+  padding-right: 4px;
+  user-select: none;
+}
+
+.attr-line-content {
+  align-items: center;
+  display: flex;
+  position: relative;
+  width: 67%;
+  min-width: 0;
+}
+
+.attr-line.is-readonly {
+  opacity: 0.75;
+}
+
+.attr-readonly {
+  color: var(--cc-text-muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attr-inline-checks {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Vec3 / axis group — Cocos X/Y/Z */
+.attr-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.attr-group-line {
+  display: flex;
+  gap: 4px;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.attr-group-item {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: stretch;
+}
+
+.attr-group-item-title {
+  align-items: center;
+  border: 1px solid var(--cc-border-soft);
+  border-right: none;
+  border-radius: 2px 0 0 2px;
+  display: flex;
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #222;
+  color: var(--cc-text-muted);
+  user-select: none;
+}
+
+.attr-group-item-title.axis-x {
+  color: var(--cc-x);
+}
+.attr-group-item-title.axis-y {
+  color: var(--cc-y);
+}
+.attr-group-item-title.axis-z {
+  color: var(--cc-z);
+}
+.attr-group-item-title.axis-w {
+  color: var(--cc-w);
+}
+
+.attr-group-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.attr-group-item-content .ant-input-number {
+  width: 100%;
+  border-radius: 0 2px 2px 0;
+}
+
+.node-panel,
+.label-panel,
+.custom-panel {
+  width: 100%;
+}
+
+.custom-sub-attr {
+  padding: 4px 0 4px 8px;
+  margin: 4px 0;
+  border-left: 2px solid var(--cc-border-soft);
+  width: 100%;
+}
+
+.custom-sub-attr-title {
+  color: var(--cc-text-muted);
+  font-size: 11px;
+  margin-bottom: 2px;
+}
+
+/* Controls */
+.node-details .attr-input,
+.node-details .attr-input-number,
+.node-details .attr-select {
+  width: 100%;
+}
+
+.node-details .ant-input,
+.node-details .ant-input-number,
+.node-details .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+  background: var(--cc-bg-input) !important;
+  border-color: var(--cc-border-soft) !important;
+  color: var(--cc-text) !important;
+  font-size: 12px !important;
+  min-height: 22px !important;
+}
+
+.node-details .ant-input-number-input {
+  height: 22px !important;
+  font-size: 12px !important;
+}
+
+.node-details .ant-checkbox-inner {
+  background: var(--cc-bg-input);
+  border-color: var(--cc-border-soft);
+}
+
+.node-details .ant-checkbox-checked .ant-checkbox-inner {
+  background: var(--cc-accent);
+  border-color: var(--cc-accent);
+}
+
+.node-details .ant-select-arrow {
+  color: var(--cc-text-muted);
+}
+
+/* Color — Cocos-like swatch */
+.attr-color-picker {
+  display: block;
+  width: 100%;
+  height: 22px;
+  border: 1px solid var(--cc-border-soft);
+  border-radius: 2px;
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+}
+
+.attr-color-picker input[type="color"] {
+  opacity: 0;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+}
+
+.attr-color-swatch {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.attr-color-picker:hover {
+  border-color: orange;
+}
+
+/* Object / asset reference slot */
+.attr-comp-input {
+  border: 1px solid var(--cc-border-soft);
+  border-radius: 3px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-left: 8px;
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--cc-bg-input);
+  transition: border-color 0.2s;
+}
+
+.attr-comp-input .type-tag {
+  position: absolute;
+  left: 4px;
+  top: -11px;
+  background: #222;
+  border: 1px solid var(--cc-border-soft);
+  border-bottom: none;
+  border-radius: 3px 3px 0 0;
+  height: 14px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  font-size: 10px;
+  color: var(--cc-text-muted);
+}
+
+.attr-comp-input .input {
+  color: var(--cc-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.attr-comp-input.filled {
+  background: #0a5f66;
+}
+
+.attr-comp-input.filled .input {
+  color: #fff;
+}
+
+.attr-comp-input:hover,
+.attr-comp-input:hover .type-tag {
+  border-color: orange;
+}
+
+.footer {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  font-size: 12px;
+  border-top: 1px solid #303030;
+}
+
+.footer a {
+  color: #177ddc;
+}
+
+.inject-mask {
+  position: absolute;
+  inset: 46px 0 28px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 20;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
+}

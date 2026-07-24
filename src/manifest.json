@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "cc-runtime",
+  "version": "0.1.5",
+  "description": "Chrome DevTools extension for debugging Cocos Creator V3 runtime. Author: b1t",
+  "homepage_url": "https://github.com/b1t",
+  "icons": {
+    "16": "assets/icon.png",
+    "48": "assets/icon.png",
+    "128": "assets/icon.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "web_accessible_resources": [
+    {
+      "matches": ["<all_urls>"],
+      "resources": ["injected.js"]
+    }
+  ],
+  "devtools_page": "assets/devtools.html",
+  "action": {
+    "default_title": "cc-runtime"
+  },
+  "permissions": ["webNavigation"],
+  "host_permissions": ["<all_urls>"]
+}
