@@ -18,7 +18,7 @@ import {
   setInspectedTabId,
   waitForEvent,
 } from "./bridge/rpc";
-import { collectIds, getState, setState, subscribe } from "./store";
+import { collectIds, findNode, getState, setState, subscribe } from "./store";
 import { selectNodeInPanel } from "./selectNode";
 import { NodeTree } from "./panels/NodeTree";
 import { NodeDetails } from "./panels/NodeDetails";
@@ -135,6 +135,28 @@ export function App() {
           nodeAttrs: { ...d.nodeAttrs, layer: payload.layer },
         },
       });
+    });
+    onEvent(Event.syncCompProp, (payload: any) => {
+      const d = getState().details;
+      if (!d?.components || payload?.key !== "enabled") return;
+      const next = d.components.map((c: any) =>
+        c.id === payload.id ? { ...c, enabled: payload.value } : c,
+      );
+      if (next === d.components) return;
+      setState({ details: { ...d, components: next } });
+    });
+    onEvent(Event.syncNodeProp, (payload: any) => {
+      if (payload?.key !== "active") return;
+      const d = getState().details;
+      if (d && d.id === payload.id) {
+        setState({ details: { ...d, active: payload.value } });
+      }
+      const scene = getState().scene;
+      const node = findNode(scene, String(payload.id));
+      if (node) {
+        node.active = !!payload.value;
+        setState({ scene: { ...scene! } });
+      }
     });
     onEvent(Event.assetsAdd, ({ key, val }: any) => {
       setState({ assets: { ...getState().assets, [key]: val } });

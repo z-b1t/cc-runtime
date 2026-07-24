@@ -777,9 +777,19 @@ function ComponentPanel({ comp }: { comp: any }) {
       title={comp.type}
       activeCheckable={typeof comp.enabled === "boolean"}
       active={comp.enabled}
-      onActiveChange={(v) =>
-        callRpc(`mutatorSet-${comp.id}`, { name: "enabled", value: v })
-      }
+      onActiveChange={async (v) => {
+        await callRpc(`mutatorSet-${comp.id}`, { name: "enabled", value: v });
+        const details = getState().details;
+        if (!details?.components) return;
+        setState({
+          details: {
+            ...details,
+            components: details.components.map((c: any) =>
+              c.id === comp.id ? { ...c, enabled: v } : c,
+            ),
+          },
+        });
+      }}
       addon={
         <Tooltip title="输出数据到控制台">
           <Button
@@ -893,12 +903,14 @@ export function NodeDetails() {
       <div className="name-bar">
         <Checkbox
           checked={!!d.active}
-          onChange={(e) =>
+          onChange={(e) => {
+            const active = e.target.checked;
+            setState({ details: { ...d, active } });
             callRpc(`mutatorSet-${d.id}`, {
               name: "active",
-              value: e.target.checked,
-            })
-          }
+              value: active,
+            });
+          }}
         />
         <Input
           className="name-input"

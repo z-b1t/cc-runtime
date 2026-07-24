@@ -5,6 +5,7 @@ import { callRpc, Rpc } from "../bridge/rpc";
 import {
   collectIds,
   filterTree,
+  findNode,
   getState,
   setState,
   subscribe,
@@ -73,6 +74,16 @@ export function NodeTree() {
         name: "active",
         value: info.checked,
       });
+      const scene = getState().scene;
+      const n = findNode(scene, id);
+      if (n) {
+        n.active = info.checked;
+        setState({ scene: { ...scene! } });
+      }
+      const details = getState().details;
+      if (details?.id === id) {
+        setState({ details: { ...details, active: info.checked } });
+      }
     },
     [],
   );
