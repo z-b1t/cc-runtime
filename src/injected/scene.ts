@@ -2,6 +2,7 @@ import { debounce, throttle } from "lodash";
 import { cleanFloat } from "../shared/number";
 import { Event, Rpc } from "../shared/protocol";
 import { serializeComponent } from "./attrs";
+import { hookCompClipboard } from "./compClipboard";
 import { registerHandler, sendEvent } from "./message";
 import { getMutatorById, Mutator, symbolMutate } from "./mutator";
 
@@ -108,6 +109,8 @@ let stopInspect: (() => void) | null = null;
 let stopDetails: (() => void) | null = null;
 
 export function hookScene() {
+  hookCompClipboard(nodeMutators);
+
   cc.director.on(cc.Director.EVENT_AFTER_SCENE_LAUNCH, pushScene);
   registerHandler(Rpc.refreshSceneData, () => {
     pushScene();

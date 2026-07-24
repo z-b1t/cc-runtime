@@ -3,8 +3,10 @@ import {
   Button,
   Checkbox,
   Collapse,
+  Dropdown,
   Input,
   InputNumber,
+  Menu,
   Select,
   Tooltip,
   message,
@@ -15,13 +17,27 @@ import {
   ReloadOutlined,
   LockOutlined,
   UnlockOutlined,
+  MoreOutlined,
 } from "@ant-design/icons";
 import { callRpc, Rpc } from "../bridge/rpc";
 import { getState, setState, subscribe, type AppState } from "../store";
 import { selectNodeInPanel } from "../selectNode";
-import { NEW_KEY, VISITOR_KEY } from "@shared/protocol";
+import {
+  NEW_KEY,
+  VISITOR_KEY,
+  type ComponentClipboardPayload,
+  type NodeClipboardPayload,
+} from "@shared/protocol";
 import { cleanFloat, formatFloatDisplay } from "@shared/number";
 import { ColorAttrField, packAbgr } from "./ColorPicker";
+import {
+  getMemoryComponentClipboard,
+  getMemoryNodeClipboard,
+  readComponentClipboard,
+  readNodeClipboard,
+  writeComponentClipboard,
+  writeNodeClipboard,
+} from "../clipboard/componentClipboard";
 
 const { Panel } = Collapse;
 
@@ -1334,11 +1350,105 @@ function AttrPanel({
 }
 
 function ComponentPanel({ comp }: { comp: any }) {
+  const [clip, setClip] = useState<ComponentClipboardPayload | null>(
+    () => getMemoryComponentClipboard(),
+  );
+  const [menuEpoch, setMenuEpoch] = useState(0);
+
   const log = async (e: React.MouseEvent) => {
     e.stopPropagation();
     await callRpc(Rpc.log, { datas: [comp], level: "log" });
     message.success("已输出至控制台");
   };
+
+  const refreshDetails = async () => {
+    const nodeId = getState().details?.id;
+    if (nodeId) await selectNodeInPanel(nodeId, { flash: false });
+  };
+
+  const onCopyComponent = async () => {
+    try {
+      const payload = (await callRpc(
+        Rpc.copyComponent,
+        comp.id,
+      )) as ComponentClipboardPayload | null;
+      if (!payload?.cid && !payload?.dump) {
+        message.error("复制失败：无法序列化组件");
+        return;
+      }
+      await writeComponentClipboard(payload);
+      setClip(payload);
+      message.success("已复制组件");
+    } catch (err) {
+      console.error(err);
+      message.error("复制组件失败");
+    }
+  };
+
+  const onPasteValues = async () => {
+    try {
+      const fromSys = await readComponentClipboard();
+      // Prefer the in-panel copy (has runtime snapshot) when cid matches.
+      const payload =
+        (clip?.runtime && clip) ||
+        (fromSys?.runtime && fromSys) ||
+        fromSys ||
+        clip;
+      setClip(payload);
+      if (!payload) {
+        message.warning("剪贴板中没有组件数据");
+        return;
+      }
+      const cid = String(payload.cid || payload.dump?.cid || "");
+      if (cid && comp.typeId && cid !== String(comp.typeId)) {
+        message.warning("组件类型不匹配，无法粘贴值");
+        return;
+      }
+      await callRpc(Rpc.pasteComponentValues, { id: comp.id, payload });
+      await refreshDetails();
+      message.success("已粘贴组件的值");
+    } catch (err) {
+      console.error(err);
+      message.error(
+        err instanceof Error ? err.message : "粘贴组件的值失败",
+      );
+    }
+  };
+
+  const onPasteAsNew = async () => {
+    try {
+      const fromSys = await readComponentClipboard();
+      const payload =
+        (clip?.runtime && clip) ||
+        (fromSys?.runtime && fromSys) ||
+        fromSys ||
+        clip;
+      setClip(payload);
+      if (!payload) {
+        message.warning("剪贴板中没有组件数据");
+        return;
+      }
+      const nodeId = getState().details?.id;
+      if (!nodeId) {
+        message.warning("未选中节点");
+        return;
+      }
+      await callRpc(Rpc.pasteComponentAsNew, { nodeId, payload });
+      await refreshDetails();
+      message.success("已粘贴为新组件");
+    } catch (err) {
+      console.error(err);
+      message.error(
+        err instanceof Error ? err.message : "粘贴成为新组件失败",
+      );
+    }
+  };
+
+  const canPasteValues = !!(
+    clip &&
+    String(clip.cid || clip.dump?.cid || "") === String(comp.typeId || "")
+  );
+  const canPasteAsNew = !!clip;
 
   let body: React.ReactNode;
   if (comp.type === "cc.Label") {
@@ -1389,15 +1499,59 @@ function ComponentPanel({ comp }: { comp: any }) {
         });
       }}
       addon={
-        <Tooltip title="输出数据到控制台">
-          <Button
-            className="export-button"
-            type="text"
-            size="small"
-            icon={<ExportOutlined />}
-            onClick={log}
-          />
-        </Tooltip>
+        <div
+          className="attr-panel-header-actions"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Tooltip title="输出数据到控制台">
+            <Button
+              className="export-button"
+              type="text"
+              size="small"
+              icon={<ExportOutlined />}
+              onClick={log}
+            />
+          </Tooltip>
+          <Dropdown
+            trigger={["click"]}
+            onVisibleChange={async (open) => {
+              if (!open) return;
+              const latest =
+                (await readComponentClipboard()) ||
+                getMemoryComponentClipboard();
+              setClip(latest);
+              setMenuEpoch((n) => n + 1);
+            }}
+            overlay={
+              <Menu
+                key={menuEpoch}
+                onClick={({ key, domEvent }) => {
+                  domEvent.stopPropagation();
+                  if (key === "copy") void onCopyComponent();
+                  else if (key === "paste-values") void onPasteValues();
+                  else if (key === "paste-new") void onPasteAsNew();
+                }}
+              >
+                <Menu.Item key="copy">复制组件</Menu.Item>
+                <Menu.Item key="paste-values" disabled={!canPasteValues}>
+                  粘贴组件的值
+                </Menu.Item>
+                <Menu.Divider />
+                <Menu.Item key="paste-new" disabled={!canPasteAsNew}>
+                  粘贴成为新组件
+                </Menu.Item>
+              </Menu>
+            }
+          >
+            <Button
+              className="export-button comp-menu-button"
+              type="text"
+              size="small"
+              icon={<MoreOutlined />}
+              title="组件设置"
+            />
+          </Dropdown>
+        </div>
       }
     >
       {body}
@@ -1483,6 +1637,154 @@ function NodeTransform({
   );
 }
 
+function NodePanel({
+  id,
+  nodeAttrs,
+}: {
+  id: string;
+  nodeAttrs: NonNullable<NonNullable<AppState["details"]>["nodeAttrs"]>;
+}) {
+  const [nodeClip, setNodeClip] = useState<NodeClipboardPayload | null>(() =>
+    getMemoryNodeClipboard(),
+  );
+  const [compClip, setCompClip] = useState<ComponentClipboardPayload | null>(
+    () => getMemoryComponentClipboard(),
+  );
+  const [menuEpoch, setMenuEpoch] = useState(0);
+
+  const refreshDetails = async () => {
+    await selectNodeInPanel(id, { flash: false });
+  };
+
+  const onCopyNode = async () => {
+    try {
+      const payload = (await callRpc(
+        Rpc.copyNode,
+        id,
+      )) as NodeClipboardPayload | null;
+      if (!payload?.dump && !payload?.runtime) {
+        message.error("复制失败：无法序列化节点");
+        return;
+      }
+      await writeNodeClipboard(payload);
+      setNodeClip(payload);
+      message.success("已复制节点的值");
+    } catch (err) {
+      console.error(err);
+      message.error("复制节点的值失败");
+    }
+  };
+
+  const onPasteNodeValues = async () => {
+    try {
+      const fromSys = await readNodeClipboard();
+      const payload =
+        (nodeClip?.runtime && nodeClip) ||
+        (fromSys?.runtime && fromSys) ||
+        fromSys ||
+        nodeClip;
+      setNodeClip(payload);
+      if (!payload) {
+        message.warning("剪贴板中没有节点数据");
+        return;
+      }
+      await callRpc(Rpc.pasteNodeValues, { id, payload });
+      await refreshDetails();
+      message.success("已粘贴节点的值");
+    } catch (err) {
+      console.error(err);
+      message.error(
+        err instanceof Error ? err.message : "粘贴节点的值失败",
+      );
+    }
+  };
+
+  const onPasteComponentAsNew = async () => {
+    try {
+      const fromSys = await readComponentClipboard();
+      const payload =
+        (compClip?.runtime && compClip) ||
+        (fromSys?.runtime && fromSys) ||
+        fromSys ||
+        compClip;
+      setCompClip(payload);
+      if (!payload) {
+        message.warning("剪贴板中没有组件数据");
+        return;
+      }
+      await callRpc(Rpc.pasteComponentAsNew, { nodeId: id, payload });
+      await refreshDetails();
+      message.success("已粘贴为新组件");
+    } catch (err) {
+      console.error(err);
+      message.error(
+        err instanceof Error ? err.message : "粘贴成为新组件失败",
+      );
+    }
+  };
+
+  const canPasteNode = !!(nodeClip?.runtime || nodeClip?.dump);
+  const canPasteComp = !!compClip;
+
+  return (
+    <AttrPanel
+      panelKey="node"
+      title="Node"
+      addon={
+        <div
+          className="attr-panel-header-actions"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Dropdown
+            trigger={["click"]}
+            onVisibleChange={async (open) => {
+              if (!open) return;
+              const n =
+                (await readNodeClipboard()) || getMemoryNodeClipboard();
+              const c =
+                (await readComponentClipboard()) ||
+                getMemoryComponentClipboard();
+              setNodeClip(n);
+              setCompClip(c);
+              setMenuEpoch((x) => x + 1);
+            }}
+            overlay={
+              <Menu
+                key={menuEpoch}
+                onClick={({ key, domEvent }) => {
+                  domEvent.stopPropagation();
+                  if (key === "copy") void onCopyNode();
+                  else if (key === "paste-values") void onPasteNodeValues();
+                  else if (key === "paste-comp") void onPasteComponentAsNew();
+                }}
+              >
+                <Menu.Item key="copy">复制节点的值</Menu.Item>
+                <Menu.Item key="paste-values" disabled={!canPasteNode}>
+                  粘贴节点的值
+                </Menu.Item>
+                <Menu.Divider />
+                <Menu.Item key="paste-comp" disabled={!canPasteComp}>
+                  粘贴成为新组件
+                </Menu.Item>
+              </Menu>
+            }
+          >
+            <Button
+              className="export-button comp-menu-button"
+              type="text"
+              size="small"
+              icon={<MoreOutlined />}
+              title="节点设置"
+            />
+          </Dropdown>
+        </div>
+      }
+    >
+      <NodeTransform id={id} nodeAttrs={nodeAttrs} />
+    </AttrPanel>
+  );
+}
+
 export function NodeDetails() {
   const [snap, setSnap] = useState<AppState>(getState());
   useEffect(() => subscribe(() => setSnap({ ...getState() })), []);
@@ -1532,11 +1834,7 @@ export function NodeDetails() {
         </div>
       )}
 
-      {d.nodeAttrs && (
-        <AttrPanel panelKey="node" title="Node">
-          <NodeTransform id={d.id} nodeAttrs={d.nodeAttrs} />
-        </AttrPanel>
-      )}
+      {d.nodeAttrs && <NodePanel id={d.id} nodeAttrs={d.nodeAttrs} />}
 
       {(d.components || []).map((c) => (
         <ComponentPanel key={c.id} comp={c} />

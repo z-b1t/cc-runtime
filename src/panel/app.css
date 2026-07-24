@@ -158,6 +158,18 @@
   opacity: 1;
 }
 
+.attr-panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+.attr-panel .comp-menu-button {
+  font-size: 14px;
+}
+
+
 /* Prop row — matches Cocos ui-prop / original .attr-line */
 .attr-line {
   align-items: center;
