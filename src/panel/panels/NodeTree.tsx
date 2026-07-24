@@ -154,7 +154,7 @@ export function NodeTree() {
       <Tree
         checkable
         checkStrictly
-        draggable
+        draggable={{ icon: false }}
         blockNode
         allowDrop={() => true}
         treeData={treeData}

@@ -298,7 +298,7 @@ export function App() {
         </div>
       )}
       <div className="footer">
-        <a href="mailto:initial_r@qq.com">联系我: initial_r@qq.com</a>
+        {/* <a href="mailto:qq493843456@163.com">联系我: qq493843456@163.com</a> */}
       </div>
     </div>
   );

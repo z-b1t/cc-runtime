@@ -37,6 +37,14 @@ function axisClassFor(key: string, typeName?: string) {
   return AXIS_CLASS[key] || "";
 }
 
+/** Keep axis badges same footprint as X/Y (single letter). */
+function axisLabel(key: string) {
+  if (key === "w" || key === "width") return "W";
+  if (key === "h" || key === "height") return "H";
+  if (key.length <= 1) return key.toUpperCase();
+  return capitalize(key);
+}
+
 async function refreshNodeDetails() {
   const id = getState().details?.id;
   if (!id) return;
@@ -115,7 +123,7 @@ function AxisGroup({
               <div
                 className={`attr-group-item-title ${axisClassFor(k, typeName)}`}
               >
-                {k.length <= 1 ? k.toUpperCase() : capitalize(k)}
+                {axisLabel(k)}
               </div>
               <div className="attr-group-item-content">
                 <InputNumber

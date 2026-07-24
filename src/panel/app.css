@@ -230,11 +230,14 @@
 
 .attr-group-item-title {
   align-items: center;
+  justify-content: center;
   border: 1px solid var(--cc-border-soft);
   border-right: none;
   border-radius: 2px 0 0 2px;
   display: flex;
-  padding: 0 6px;
+  flex: 0 0 18px;
+  width: 18px;
+  padding: 0;
   font-size: 11px;
   font-weight: 700;
   background: #222;
@@ -782,6 +785,37 @@
   animation: tree-node-flash 0.3s ease-in-out 3;
   border-radius: 2px;
   padding: 0 4px;
+}
+
+.panel-body .ant-tree .ant-tree-treenode {
+  padding: 0;
+  align-items: center;
+}
+
+.panel-body .ant-tree .ant-tree-switcher,
+.panel-body .ant-tree .ant-tree-checkbox + span,
+.panel-body .ant-tree .ant-tree-node-content-wrapper {
+  min-height: 20px;
+  line-height: 20px;
+}
+
+.panel-body .ant-tree .ant-tree-checkbox {
+  margin: 2px 6px 0 0;
+}
+
+.panel-body .ant-tree .ant-tree-iconEle {
+  width: 16px;
+  height: 20px;
+  line-height: 20px;
+  margin-right: 2px;
+}
+
+.panel-body .ant-tree .tree-node-icon {
+  width: 14px;
+  height: 14px;
+  display: block;
+  object-fit: contain;
+  vertical-align: middle;
 }
 
 @keyframes tree-node-flash {
