@@ -675,6 +675,12 @@ export const specialSerializers: Record<string, (comp: any) => any> = {
       isAlignLeft,
       isAlignHorizontalCenter,
       isAlignRight,
+      isAbsoluteTop,
+      isAbsoluteVerticalCenter,
+      isAbsoluteBottom,
+      isAbsoluteLeft,
+      isAbsoluteHorizontalCenter,
+      isAbsoluteRight,
       top,
       verticalCenter,
       bottom,
@@ -683,6 +689,7 @@ export const specialSerializers: Record<string, (comp: any) => any> = {
       right,
       target,
       alignMode,
+      _lockFlags,
     } = n;
     const ensure = (obj: any) => serializeVisitorRef(obj);
     return {
@@ -692,6 +699,12 @@ export const specialSerializers: Record<string, (comp: any) => any> = {
       isAlignLeft,
       isAlignHorizontalCenter,
       isAlignRight,
+      isAbsoluteTop,
+      isAbsoluteVerticalCenter,
+      isAbsoluteBottom,
+      isAbsoluteLeft,
+      isAbsoluteHorizontalCenter,
+      isAbsoluteRight,
       top,
       verticalCenter,
       bottom,
@@ -703,6 +716,7 @@ export const specialSerializers: Record<string, (comp: any) => any> = {
       alignModeMap: serializeValue(
         cc.WidgetComponent?.AlignMode || cc.Widget?.AlignMode,
       ),
+      _lockFlags: _lockFlags ?? 0,
     };
   },
 };

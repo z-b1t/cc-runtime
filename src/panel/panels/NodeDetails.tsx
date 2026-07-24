@@ -9,7 +9,13 @@ import {
   Tooltip,
   message,
 } from "antd";
-import { ExportOutlined, DeleteOutlined, ReloadOutlined } from "@ant-design/icons";
+import {
+  ExportOutlined,
+  DeleteOutlined,
+  ReloadOutlined,
+  LockOutlined,
+  UnlockOutlined,
+} from "@ant-design/icons";
 import { callRpc, Rpc } from "../bridge/rpc";
 import { getState, setState, subscribe, type AppState } from "../store";
 import { selectNodeInPanel } from "../selectNode";
@@ -779,57 +785,505 @@ function LabelInspector({ data, id }: { data: any; id: string }) {
   );
 }
 
-function WidgetInspector({ data, id }: { data: any; id: string }) {
-  const flags = [
-    "isAlignTop",
-    "isAlignBottom",
-    "isAlignLeft",
-    "isAlignRight",
-    "isAlignVerticalCenter",
-    "isAlignHorizontalCenter",
-  ] as const;
-  const nums = [
-    "top",
-    "bottom",
-    "left",
-    "right",
-    "verticalCenter",
-    "horizontalCenter",
-  ] as const;
+type WidgetHMode = "" | "left" | "center" | "right" | "stretch";
+type WidgetVMode = "" | "top" | "middle" | "bottom" | "stretch";
+
+function deriveWidgetHMode(d: any): WidgetHMode {
+  const L = !!d.isAlignLeft;
+  const R = !!d.isAlignRight;
+  const C = !!d.isAlignHorizontalCenter;
+  if (C) return "center";
+  if (L && R) return "stretch";
+  if (L) return "left";
+  if (R) return "right";
+  return "";
+}
+
+function deriveWidgetVMode(d: any): WidgetVMode {
+  const T = !!d.isAlignTop;
+  const B = !!d.isAlignBottom;
+  const C = !!d.isAlignVerticalCenter;
+  if (C) return "middle";
+  if (T && B) return "stretch";
+  if (T) return "top";
+  if (B) return "bottom";
+  return "";
+}
+
+const WIDGET_H_FLAGS: Record<string, Record<string, boolean>> = {
+  horizontal: {
+    isAlignLeft: false,
+    isAlignRight: false,
+    isAlignHorizontalCenter: false,
+  },
+  left: {
+    isAlignLeft: true,
+    isAlignRight: false,
+    isAlignHorizontalCenter: false,
+  },
+  center: {
+    isAlignLeft: false,
+    isAlignRight: false,
+    isAlignHorizontalCenter: true,
+  },
+  right: {
+    isAlignLeft: false,
+    isAlignRight: true,
+    isAlignHorizontalCenter: false,
+  },
+  "h-stretch": {
+    isAlignLeft: true,
+    isAlignRight: true,
+    isAlignHorizontalCenter: false,
+  },
+};
+
+const WIDGET_V_FLAGS: Record<string, Record<string, boolean>> = {
+  vertical: {
+    isAlignTop: false,
+    isAlignBottom: false,
+    isAlignVerticalCenter: false,
+  },
+  top: {
+    isAlignTop: true,
+    isAlignBottom: false,
+    isAlignVerticalCenter: false,
+  },
+  middle: {
+    isAlignTop: false,
+    isAlignBottom: false,
+    isAlignVerticalCenter: true,
+  },
+  bottom: {
+    isAlignTop: false,
+    isAlignBottom: true,
+    isAlignVerticalCenter: false,
+  },
+  "v-stretch": {
+    isAlignTop: true,
+    isAlignBottom: true,
+    isAlignVerticalCenter: false,
+  },
+};
+
+/** Cocos widget-icon: dashed align line + long/short bars */
+function WidgetIcon({ className }: { className: string }) {
   return (
-    <div className="label-panel">
-      {flags.map((f) => (
-        <AttrLine key={f} title={f}>
-          <Checkbox
-            defaultChecked={!!data[f]}
-            onChange={(e) =>
-              callRpc(`mutatorSet-${id}`, {
-                name: f,
-                value: e.target.checked,
-              })
-            }
-          />
-        </AttrLine>
-      ))}
-      {nums.map((k) => (
-        <AttrLine key={k} title={k}>
-          <InputNumber
-            className="attr-input-number"
-            size="small"
-            defaultValue={
-              typeof data[k] === "number" ? cleanFloat(data[k]) : data[k]
-            }
-            step={0.01}
-            formatter={(v, info) => formatFloatDisplay(v, info?.userTyping)}
-            onChange={(n) =>
-              callRpc(`mutatorSet-${id}`, {
-                name: k,
-                value: cleanFloat(Number(n) || 0),
-              })
-            }
-          />
-        </AttrLine>
-      ))}
+    <div className={`widget-icon ${className}`}>
+      <span className="line" />
+      <span className="long" />
+      <span className="short" />
+      <span className="line second" />
+    </div>
+  );
+}
+
+function WidgetMarginField({
+  label,
+  value,
+  isAbsolute,
+  locked,
+  onValue,
+  onToggleAbsolute,
+  onToggleLock,
+}: {
+  label: string;
+  value: number;
+  isAbsolute: boolean;
+  locked: boolean;
+  onValue: (n: number) => void;
+  onToggleAbsolute: () => void;
+  onToggleLock: () => void;
+}) {
+  const display = isAbsolute
+    ? cleanFloat(Number(value) || 0)
+    : cleanFloat((Number(value) || 0) * 100);
+  return (
+    <div className="widget-margin-field">
+      <div className="widget-direction">
+        <span className="name">{label}</span>
+        <button
+          type="button"
+          className={`widget-lock-icon${locked ? " is-lock" : ""}`}
+          title={locked ? "Unlock value" : "Lock value"}
+          onClick={onToggleLock}
+        >
+          {locked ? <LockOutlined /> : <UnlockOutlined />}
+        </button>
+      </div>
+      <div className="widget-num-wrap">
+        <InputNumber
+          className="attr-input-number widget-margin-input"
+          size="small"
+          step={isAbsolute ? 1 : 0.1}
+          value={display}
+          formatter={(v, info) => formatFloatDisplay(v, info?.userTyping)}
+          onChange={(n) => {
+            const raw = n == null ? 0 : Number(n);
+            onValue(
+              cleanFloat(isAbsolute ? raw : raw / 100),
+            );
+          }}
+        />
+        <button
+          type="button"
+          className="widget-unit-btn"
+          title="Toggle px / %"
+          onClick={onToggleAbsolute}
+        >
+          {isAbsolute ? "px" : "%"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function WidgetInspector({ data, id }: { data: any; id: string }) {
+  const [local, setLocal] = useState(data);
+  useEffect(() => setLocal(data), [data]);
+
+  const setProp = async (name: string, value: any) => {
+    setLocal((prev: any) => ({ ...prev, [name]: value }));
+    await callRpc(`mutatorSet-${id}`, { name, value });
+    await refreshNodeDetails();
+  };
+
+  const setProps = async (patch: Record<string, any>) => {
+    setLocal((prev: any) => ({ ...prev, ...patch }));
+    await Promise.all(
+      Object.entries(patch).map(([name, value]) =>
+        callRpc(`mutatorSet-${id}`, { name, value }),
+      ),
+    );
+    await refreshNodeDetails();
+  };
+
+  const hMode = deriveWidgetHMode(local);
+  const vMode = deriveWidgetVMode(local);
+  const lockFlags = Number(local._lockFlags) || 0;
+  const LockBit = {
+    top: 1 << 0,
+    middle: 1 << 1,
+    bottom: 1 << 2,
+    left: 1 << 3,
+    center: 1 << 4,
+    right: 1 << 5,
+  } as const;
+
+  const isLock = (dir: keyof typeof LockBit) =>
+    !!(lockFlags & LockBit[dir]);
+
+  const toggleLock = async (dir: keyof typeof LockBit) => {
+    let dirs: (keyof typeof LockBit)[] = [dir];
+    if (
+      (dir === "left" || dir === "right") &&
+      local.isAlignLeft &&
+      local.isAlignRight
+    ) {
+      dirs = ["left", "right"];
+    }
+    if (
+      (dir === "top" || dir === "bottom") &&
+      local.isAlignTop &&
+      local.isAlignBottom
+    ) {
+      dirs = ["top", "bottom"];
+    }
+    const locked = isLock(dir);
+    let next = lockFlags;
+    for (const d of dirs) {
+      next = locked ? next & ~LockBit[d] : next | LockBit[d];
+    }
+    await setProp("_lockFlags", next >>> 0);
+  };
+
+  const centerStyle: React.CSSProperties = {};
+  if (local.isAlignTop) centerStyle.top = "12.5%";
+  if (local.isAlignBottom) {
+    centerStyle.bottom = "12.5%";
+    centerStyle.top = local.isAlignTop ? "12.5%" : "auto";
+    if (local.isAlignTop) centerStyle.height = "auto";
+  }
+  if (local.isAlignLeft) centerStyle.left = "12.5%";
+  if (local.isAlignRight) {
+    centerStyle.right = "12.5%";
+    centerStyle.left = local.isAlignLeft ? "12.5%" : "auto";
+    if (local.isAlignLeft) centerStyle.width = "auto";
+  }
+
+  return (
+    <div className="widget-panel">
+      <div className="widget-layout">
+        <div className="widget-rect-wrap">
+          {(vMode === "top" || vMode === "stretch") && (
+            <div className="widget-side-label widget-side-label--top">top</div>
+          )}
+          {(hMode === "right" || hMode === "stretch") && (
+            <div className="widget-side-label widget-side-label--right">
+              right
+            </div>
+          )}
+          {(vMode === "bottom" || vMode === "stretch") && (
+            <div className="widget-side-label widget-side-label--bottom">
+              bottom
+            </div>
+          )}
+          {(hMode === "left" || hMode === "stretch") && (
+            <div className="widget-side-label widget-side-label--left">left</div>
+          )}
+
+          <div className="widget-rect">
+            <div
+              className="widget-rect-center"
+              style={centerStyle}
+            >
+              {!!local.isAlignTop && (
+                <span className="widget-arrow-icon widget-arrow-icon--top" />
+              )}
+              {!!local.isAlignRight && (
+                <span className="widget-arrow-icon widget-arrow-icon--right" />
+              )}
+              {!!local.isAlignBottom && (
+                <span className="widget-arrow-icon widget-arrow-icon--bottom" />
+              )}
+              {!!local.isAlignLeft && (
+                <span className="widget-arrow-icon widget-arrow-icon--left" />
+              )}
+            </div>
+            {!!local.isAlignTop && <div className="widget-guide widget-guide--top" />}
+            {!!local.isAlignBottom && (
+              <div className="widget-guide widget-guide--bottom" />
+            )}
+            {!!local.isAlignLeft && <div className="widget-guide widget-guide--left" />}
+            {!!local.isAlignRight && (
+              <div className="widget-guide widget-guide--right" />
+            )}
+            {!!local.isAlignHorizontalCenter && (
+              <div className="widget-guide widget-guide--vcenter" />
+            )}
+            {!!local.isAlignVerticalCenter && (
+              <div className="widget-guide widget-guide--hcenter" />
+            )}
+          </div>
+        </div>
+
+        <div className="widget-controls">
+          <div className="widget-line">
+            <span className="widget-section-title">Horizontal Alignment</span>
+          </div>
+          <div className="widget-line">
+            <div className="widget-button-group">
+              <button
+                type="button"
+                className={`widget-mode-btn${hMode === "" ? " is-active" : ""}`}
+                onClick={() => setProps({ ...WIDGET_H_FLAGS.horizontal })}
+              >
+                NONE
+              </button>
+              <Tooltip title="Left">
+                <button
+                  type="button"
+                  className={`widget-mode-btn${hMode === "left" ? " is-active" : ""}`}
+                  onClick={() => setProps({ ...WIDGET_H_FLAGS.left })}
+                >
+                  <WidgetIcon className="left" />
+                </button>
+              </Tooltip>
+              <Tooltip title="Center">
+                <button
+                  type="button"
+                  className={`widget-mode-btn${hMode === "center" ? " is-active" : ""}`}
+                  onClick={() => setProps({ ...WIDGET_H_FLAGS.center })}
+                >
+                  <WidgetIcon className="center" />
+                </button>
+              </Tooltip>
+              <Tooltip title="Right">
+                <button
+                  type="button"
+                  className={`widget-mode-btn${hMode === "right" ? " is-active" : ""}`}
+                  onClick={() => setProps({ ...WIDGET_H_FLAGS.right })}
+                >
+                  <WidgetIcon className="right" />
+                </button>
+              </Tooltip>
+              <Tooltip title="Horizontal Stretch">
+                <button
+                  type="button"
+                  className={`widget-mode-btn${hMode === "stretch" ? " is-active" : ""}`}
+                  onClick={() => setProps({ ...WIDGET_H_FLAGS["h-stretch"] })}
+                >
+                  <WidgetIcon className="horizontal" />
+                </button>
+              </Tooltip>
+            </div>
+          </div>
+          {hMode !== "" && (
+            <div className="widget-line widget-inputs">
+              {!!local.isAlignLeft && (
+                <WidgetMarginField
+                  label="Left"
+                  value={local.left}
+                  isAbsolute={local.isAbsoluteLeft !== false}
+                  locked={isLock("left")}
+                  onValue={(n) => setProp("left", n)}
+                  onToggleAbsolute={() =>
+                    setProp("isAbsoluteLeft", local.isAbsoluteLeft === false)
+                  }
+                  onToggleLock={() => toggleLock("left")}
+                />
+              )}
+              {!!local.isAlignHorizontalCenter && (
+                <WidgetMarginField
+                  label="Center"
+                  value={local.horizontalCenter}
+                  isAbsolute={local.isAbsoluteHorizontalCenter !== false}
+                  locked={isLock("center")}
+                  onValue={(n) => setProp("horizontalCenter", n)}
+                  onToggleAbsolute={() =>
+                    setProp(
+                      "isAbsoluteHorizontalCenter",
+                      local.isAbsoluteHorizontalCenter === false,
+                    )
+                  }
+                  onToggleLock={() => toggleLock("center")}
+                />
+              )}
+              {!!local.isAlignRight && (
+                <WidgetMarginField
+                  label="Right"
+                  value={local.right}
+                  isAbsolute={local.isAbsoluteRight !== false}
+                  locked={isLock("right")}
+                  onValue={(n) => setProp("right", n)}
+                  onToggleAbsolute={() =>
+                    setProp("isAbsoluteRight", local.isAbsoluteRight === false)
+                  }
+                  onToggleLock={() => toggleLock("right")}
+                />
+              )}
+            </div>
+          )}
+
+          <div className="widget-line widget-line--gap">
+            <span className="widget-section-title">Vertical Alignment</span>
+          </div>
+          <div className="widget-line">
+            <div className="widget-button-group">
+              <button
+                type="button"
+                className={`widget-mode-btn${vMode === "" ? " is-active" : ""}`}
+                onClick={() => setProps({ ...WIDGET_V_FLAGS.vertical })}
+              >
+                NONE
+              </button>
+              <Tooltip title="Top">
+                <button
+                  type="button"
+                  className={`widget-mode-btn${vMode === "top" ? " is-active" : ""}`}
+                  onClick={() => setProps({ ...WIDGET_V_FLAGS.top })}
+                >
+                  <WidgetIcon className="top right" />
+                </button>
+              </Tooltip>
+              <Tooltip title="Middle">
+                <button
+                  type="button"
+                  className={`widget-mode-btn${vMode === "middle" ? " is-active" : ""}`}
+                  onClick={() => setProps({ ...WIDGET_V_FLAGS.middle })}
+                >
+                  <WidgetIcon className="middle center" />
+                </button>
+              </Tooltip>
+              <Tooltip title="Bottom">
+                <button
+                  type="button"
+                  className={`widget-mode-btn${vMode === "bottom" ? " is-active" : ""}`}
+                  onClick={() => setProps({ ...WIDGET_V_FLAGS.bottom })}
+                >
+                  <WidgetIcon className="bottom left" />
+                </button>
+              </Tooltip>
+              <Tooltip title="Vertical Stretch">
+                <button
+                  type="button"
+                  className={`widget-mode-btn${vMode === "stretch" ? " is-active" : ""}`}
+                  onClick={() => setProps({ ...WIDGET_V_FLAGS["v-stretch"] })}
+                >
+                  <WidgetIcon className="vertical horizontal" />
+                </button>
+              </Tooltip>
+            </div>
+          </div>
+          {vMode !== "" && (
+            <div className="widget-line widget-inputs">
+              {!!local.isAlignTop && (
+                <WidgetMarginField
+                  label="Top"
+                  value={local.top}
+                  isAbsolute={local.isAbsoluteTop !== false}
+                  locked={isLock("top")}
+                  onValue={(n) => setProp("top", n)}
+                  onToggleAbsolute={() =>
+                    setProp("isAbsoluteTop", local.isAbsoluteTop === false)
+                  }
+                  onToggleLock={() => toggleLock("top")}
+                />
+              )}
+              {!!local.isAlignVerticalCenter && (
+                <WidgetMarginField
+                  label="Middle"
+                  value={local.verticalCenter}
+                  isAbsolute={local.isAbsoluteVerticalCenter !== false}
+                  locked={isLock("middle")}
+                  onValue={(n) => setProp("verticalCenter", n)}
+                  onToggleAbsolute={() =>
+                    setProp(
+                      "isAbsoluteVerticalCenter",
+                      local.isAbsoluteVerticalCenter === false,
+                    )
+                  }
+                  onToggleLock={() => toggleLock("middle")}
+                />
+              )}
+              {!!local.isAlignBottom && (
+                <WidgetMarginField
+                  label="Bottom"
+                  value={local.bottom}
+                  isAbsolute={local.isAbsoluteBottom !== false}
+                  locked={isLock("bottom")}
+                  onValue={(n) => setProp("bottom", n)}
+                  onToggleAbsolute={() =>
+                    setProp("isAbsoluteBottom", local.isAbsoluteBottom === false)
+                  }
+                  onToggleLock={() => toggleLock("bottom")}
+                />
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <AttrField
+        attr={{
+          name: "target",
+          type: "object",
+          typeName: "cc.Node",
+          displayName: "Target",
+          default: local.target,
+        }}
+        mutatorId={id}
+      />
+      <AttrField
+        attr={{
+          name: "alignMode",
+          type: "enum",
+          displayName: "Align Mode",
+          enumList: local.alignModeMap,
+          default: local.alignMode,
+        }}
+        mutatorId={id}
+      />
     </div>
   );
 }
@@ -890,7 +1344,7 @@ function ComponentPanel({ comp }: { comp: any }) {
   if (comp.type === "cc.Label") {
     body = <LabelInspector data={comp} id={comp.id} />;
   } else if (comp.type === "cc.Widget") {
-    body = <WidgetInspector data={comp} id={comp.id} />;
+    body = <WidgetInspector key={comp.id} data={comp} id={comp.id} />;
   } else if (comp.attrs) {
     body = (
       <div className="custom-panel">
