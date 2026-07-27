@@ -4,6 +4,32 @@ import { findPathIds, getState, setState } from "./store";
 
 let flashTimer: ReturnType<typeof setTimeout> | null = null;
 
+/** Expand ancestors of `id` and scroll the selected tree row into view. */
+export function locateNodeInTree(id: string, opts?: { flash?: boolean }) {
+  if (!id) return;
+  const scene = getState().scene;
+  const ancestors = findPathIds(scene, id) || [];
+  const expanded = new Set([...getState().expandedKeys, ...ancestors]);
+  setState({ expandedKeys: [...expanded] });
+
+  if (opts?.flash !== false) {
+    if (flashTimer) clearTimeout(flashTimer);
+    setState({ flashNodeId: id });
+    flashTimer = setTimeout(() => {
+      if (getState().flashNodeId === id) setState({ flashNodeId: null });
+      flashTimer = null;
+    }, 900);
+  }
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      document
+        .querySelector(".ant-tree-treenode-selected")
+        ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
+  });
+}
+
 /** Select a node in the panel tree, expand ancestors, load details, flash row. */
 export async function selectNodeInPanel(id: string, opts?: { flash?: boolean }) {
   if (!id) return;

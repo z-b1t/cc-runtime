@@ -96,10 +96,12 @@ export function App() {
   useEffect(() => {
     onEvent(Event.sceneData, (data) => {
       const scene = data as any;
+      const { scene: prevScene, expandedKeys } = getState();
       setState({
         scene,
-        expandedKeys: getState().expandedKeys.length
-          ? getState().expandedKeys
+        // First load only: seed default expands. Keep [] after "collapse all".
+        expandedKeys: prevScene
+          ? expandedKeys
           : collectIds(scene).slice(0, 50),
       });
     });

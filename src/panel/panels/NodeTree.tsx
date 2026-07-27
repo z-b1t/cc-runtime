@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Input, Space, Tree, message } from "antd";
+import { Button, Input, Select, Space, Tree } from "antd";
 import type { DataNode, EventDataNode } from "antd/es/tree";
 import { callRpc, Rpc } from "../bridge/rpc";
 import {
+  collectCompTypes,
   collectIds,
-  filterTree,
+  collectMatchingNodes,
   findNode,
   getState,
   setState,
@@ -12,7 +13,7 @@ import {
   type AppState,
 } from "../store";
 import type { SceneNodeData } from "@shared/protocol";
-import { selectNodeInPanel } from "../selectNode";
+import { locateNodeInTree, selectNodeInPanel } from "../selectNode";
 
 function toTreeData(
   node: SceneNodeData,
@@ -43,16 +44,38 @@ function collectChecked(node: SceneNodeData | null, out: string[] = []): string[
 
 export function NodeTree() {
   const [snap, setSnap] = useState<AppState>(getState());
-  useEffect(() => subscribe(() => setSnap({ ...getState() })), []);
+  useEffect(() => {
+    const unsub = subscribe(() => setSnap({ ...getState() }));
+    return () => {
+      unsub();
+    };
+  }, []);
 
-  const filtered = useMemo(
-    () => filterTree(snap.scene, snap.search),
-    [snap.scene, snap.search],
+  const matches = useMemo(
+    () =>
+      collectMatchingNodes(snap.scene, {
+        keyword: snap.search,
+        compTypes: snap.compTypeFilter,
+      }),
+    [snap.scene, snap.search, snap.compTypeFilter],
   );
-  const treeData = useMemo(
-    () => (filtered ? [toTreeData(filtered, snap.flashNodeId)] : []),
-    [filtered, snap.flashNodeId],
+
+  const treeData = useMemo(() => {
+    if (matches) {
+      return matches.map((n) => toTreeData(n, snap.flashNodeId));
+    }
+    return snap.scene ? [toTreeData(snap.scene, snap.flashNodeId)] : [];
+  }, [matches, snap.scene, snap.flashNodeId]);
+
+  const compTypeOptions = useMemo(
+    () =>
+      collectCompTypes(snap.scene).map((t) => ({
+        label: t,
+        value: t,
+      })),
+    [snap.scene],
   );
+
   const checkedKeys = useMemo(
     () => collectChecked(snap.scene),
     [snap.scene],
@@ -62,6 +85,15 @@ export function NodeTree() {
     const id = String(keys[0] || "");
     if (!id) return;
     await selectNodeInPanel(id, { flash: false });
+  }, []);
+
+  const clearSearchAndLocate = useCallback(() => {
+    setState({ search: "" });
+    const id = getState().selectedId;
+    if (id) {
+      // Wait for tree to re-render with full hierarchy before locating.
+      setTimeout(() => locateNodeInTree(id, { flash: true }), 0);
+    }
   }, []);
 
   const onCheck = useCallback(
@@ -117,12 +149,6 @@ export function NodeTree() {
   };
   const collapseAll = () => setState({ expandedKeys: [] });
 
-  const logNode = async () => {
-    if (!snap.selectedId) return;
-    await callRpc(Rpc.logNode, snap.selectedId);
-    message.success("节点已输出至控制台");
-  };
-
   return (
     <div className="panel-body">
       <Space style={{ marginBottom: 8 }} wrap>
@@ -130,25 +156,42 @@ export function NodeTree() {
           placeholder="查找节点"
           allowClear
           value={snap.search}
-          onChange={(e) => setState({ search: e.target.value })}
-          onSearch={(v) => setState({ search: v })}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (!v && snap.search) {
+              clearSearchAndLocate();
+              return;
+            }
+            setState({ search: v });
+          }}
+          onSearch={(v) => {
+            if (!v && snap.search) {
+              clearSearchAndLocate();
+              return;
+            }
+            setState({ search: v });
+          }}
           onPressEnter={() => {
-            const f = filterTree(snap.scene, snap.search);
-            if (f) onSelect([f.id]);
+            if (matches?.length) onSelect([matches[0].id]);
           }}
           style={{ width: 180 }}
         />
-        <Button size="small" onClick={() => setState({ search: "" })}>
-          清除搜索
-        </Button>
+        <Select
+          mode="multiple"
+          allowClear
+          placeholder="组件类型"
+          value={snap.compTypeFilter}
+          options={compTypeOptions}
+          onChange={(v) => setState({ compTypeFilter: v })}
+          maxTagCount="responsive"
+          style={{ minWidth: 200, maxWidth: 280 }}
+          size="small"
+        />
         <Button size="small" onClick={expandAll}>
           全部展开
         </Button>
         <Button size="small" onClick={collapseAll}>
           全部折叠
-        </Button>
-        <Button size="small" onClick={logNode} disabled={!snap.selectedId}>
-          将节点输出至控制台
         </Button>
       </Space>
       <Tree
