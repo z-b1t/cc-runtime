@@ -167,7 +167,9 @@ export function App() {
       setState({ assets: next });
     });
     onEvent(Event.assetsClear, () => setState({ assets: {} }));
-    onEvent("tabReloaded", () => {
+    onEvent("tabReloaded", (data: any) => {
+      const inspected = chrome.devtools.inspectedWindow.tabId;
+      if (data?.tabId != null && data.tabId !== inspected) return;
       message.loading({ content: "页面正在刷新，请稍等...", key: "inj", duration: 0 });
       setState({ injecting: true, scene: null, details: null, selectedId: null, flashNodeId: null });
       bootstrap();
