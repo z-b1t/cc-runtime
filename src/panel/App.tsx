@@ -195,7 +195,13 @@ export function App() {
     let config = defaultLayout;
     try {
       const raw = localStorage.getItem(LAYOUT_STORAGE_KEY);
-      if (raw) config = JSON.parse(raw);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        // saveLayout() returns ResolvedLayoutConfig (numeric sizes); loadLayout needs LayoutConfig.
+        config = LayoutConfig.isResolved(parsed)
+          ? LayoutConfig.fromResolved(parsed)
+          : (parsed as LayoutConfig);
+      }
     } catch {
       /* ignore */
     }
