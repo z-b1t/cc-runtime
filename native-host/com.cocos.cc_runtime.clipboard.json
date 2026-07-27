@@ -1,9 +1,0 @@
-{
-  "name": "com.cocos.cc_runtime.clipboard",
-  "description": "cc-runtime Win32 clipboard host for Creator _dump_component_",
-  "path": "HOST_PATH_PLACEHOLDER",
-  "type": "stdio",
-  "allowed_origins": [
-    "chrome-extension://EXTENSION_ID_PLACEHOLDER/"
-  ]
-}

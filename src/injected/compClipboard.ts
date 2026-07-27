@@ -434,7 +434,7 @@ function materializeDumpValue(raw: any, typeHint?: string): any {
 }
 
 function applyDumpToComponent(comp: any, payload: ComponentClipboardPayload) {
-  // Prefer runtime snapshot — dump path is mainly for Creator editor paste.
+  // Prefer runtime snapshot for reliable in-panel paste.
   const runtime = (payload as any)?.runtime;
   if (runtime && typeof runtime === "object") {
     applyRuntimeProps(comp, runtime);
@@ -469,7 +469,7 @@ function applyDumpToComponent(comp: any, payload: ComponentClipboardPayload) {
   }
 }
 
-/** Build Creator Editor.Clipboard `_dump_component_` payload from a live component. */
+/** Build panel clipboard payload from a live component. */
 export function dumpComponentForClipboard(
   comp: any,
 ): ComponentClipboardPayload | null {
@@ -554,7 +554,7 @@ function dumpVec3Node(v: any) {
   );
 }
 
-/** Creator `_dump_node_` payload + runtime snapshot. */
+/** Panel node clipboard payload + runtime snapshot. */
 export function dumpNodeForClipboard(node: any): NodeClipboardPayload | null {
   if (!node || !(node instanceof cc.Node)) return null;
   const position = vec3Plain(node.position);

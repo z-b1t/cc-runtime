@@ -24,22 +24,17 @@ export const Rpc = {
   assetsGetAll: "assets::getAll",
   resolveVisitor: "resolveVisitor",
   flashNode: "flashNode",
-  /** Dump component into Creator-compatible `_dump_component_` payload. */
+  /** Dump component into panel clipboard payload. */
   copyComponent: "copyComponent",
   /** Apply clipboard dump values onto an existing component (same cid). */
   pasteComponentValues: "pasteComponentValues",
   /** addComponent(cid) then apply dump on the current node. */
   pasteComponentAsNew: "pasteComponentAsNew",
-  /** Dump node transform/layer into Creator-compatible `_dump_node_` payload. */
+  /** Dump node transform/layer into panel clipboard payload. */
   copyNode: "copyNode",
   /** Apply clipboard node values onto the selected node. */
   pasteNodeValues: "pasteNodeValues",
 } as const;
-
-/** Cocos Creator Editor.Clipboard custom type for component copy/paste. */
-export const CLIPBOARD_COMPONENT_TYPE = "_dump_component_";
-/** Cocos Creator Editor.Clipboard custom type for node value copy/paste. */
-export const CLIPBOARD_NODE_TYPE = "_dump_node_";
 
 export interface ComponentClipboardPayload {
   cid: string;

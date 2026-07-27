@@ -7,8 +7,7 @@
   "homepage": "https://github.com/z-b1t",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "smoke": "node scripts/smoke.mjs",
-    "register-clipboard-host": "node scripts/register-clipboard-host.mjs"
+    "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {
     "@ant-design/icons": "^4.7.0",

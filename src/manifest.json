@@ -30,6 +30,6 @@
   "action": {
     "default_title": "cc-runtime"
   },
-  "permissions": ["webNavigation", "nativeMessaging"],
+  "permissions": ["webNavigation"],
   "host_permissions": ["<all_urls>"]
 }
