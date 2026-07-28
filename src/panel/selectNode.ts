@@ -48,6 +48,9 @@ export async function selectNodeInPanel(id: string, opts?: { flash?: boolean }) 
     expandedKeys: [...expanded],
   });
 
+  // Outline + enable canvas XY drag for this node (ignored while pick mode runs).
+  void callRpc(Rpc.highlightNode, { id }).catch(() => {});
+
   try {
     const details = await callRpc(Rpc.getNodeDetails, id);
     if (getState().selectedId !== id) return;

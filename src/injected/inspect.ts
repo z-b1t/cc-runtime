@@ -8,6 +8,7 @@ import {
 import { getGameCanvas } from "./coords";
 import { hideHighlight, highlightNode } from "./highlight";
 import { registerHandler, sendEvent } from "./message";
+import { setMovePaused, setMoveTarget } from "./move";
 import { pickCandidatesAtClient } from "./pick";
 import { ensureNodeMutator } from "./scene";
 import { getMutatorById } from "./mutator";
@@ -140,12 +141,16 @@ function cycleCandidate(s: Session, delta: number) {
 function startInspect(): InspectStartResult {
   // Restarting must not tell the panel the mode just ended.
   stopInspect({ silent: true });
+  // Pick mode owns canvas capture; keep drag off for the whole session.
+  setMovePaused(true);
 
   const canvas = getGameCanvas();
   if (!canvas) {
+    setMovePaused(false);
     return { ok: false, reason: "找不到游戏 canvas，请确认页面已启动 Cocos" };
   }
   if (!cc.director?.getScene()) {
+    setMovePaused(false);
     return { ok: false, reason: "当前没有运行中的场景" };
   }
 
@@ -249,7 +254,11 @@ function startInspect(): InspectStartResult {
 
 export function stopInspect(opts?: { grace?: boolean; silent?: boolean }) {
   const s = session;
-  if (!s) return;
+  if (!s) {
+    // Still allow unpausing if startInspect failed after pausing.
+    if (!opts?.silent) setMovePaused(false);
+    return;
+  }
   session = null;
   s.onMove.cancel();
   s.reportHover.cancel();
@@ -262,6 +271,7 @@ export function stopInspect(opts?: { grace?: boolean; silent?: boolean }) {
     swallowUntil = 0;
     s.detach();
   }
+  setMovePaused(false);
   if (!opts?.silent) void sendEvent(Event.inspectEnd, null);
 }
 
@@ -271,14 +281,14 @@ export function hookInspect() {
     stopInspect();
   });
   registerHandler(Rpc.highlightNode, (payload: any) => {
-    // Pick mode owns the outline while it runs.
-    if (session) return;
     const id = payload?.id ? String(payload.id) : "";
     const node = id ? getMutatorById(id)?.target : null;
-    if (node && node instanceof cc.Node && node.isValid !== false) {
-      highlightNode(node);
-    } else {
-      hideHighlight();
-    }
+    const valid =
+      node && node instanceof cc.Node && node.isValid !== false ? node : null;
+    // Keep drag target in sync even while pick mode owns the outline.
+    setMoveTarget(valid);
+    if (session) return;
+    if (valid) highlightNode(valid);
+    else hideHighlight();
   });
 }

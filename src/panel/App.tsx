@@ -288,6 +288,7 @@ export function App() {
       message.loading({ content: "页面正在刷新，请稍等...", key: "inj", duration: 0 });
       // The injected collector is gone with the old page.
       resetProfiler();
+      void callRpc(Rpc.highlightNode, null).catch(() => {});
       setState({
         injecting: true,
         // The injected pick session died with the old page.
