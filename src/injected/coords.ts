@@ -94,6 +94,77 @@ export function getLocalRect(node: any): LocalRect | null {
   };
 }
 
+/** World-space axis-aligned box, matching the engine's AABB layout. */
+export interface WorldBounds {
+  center: Vec3Like3;
+  halfExtents: Vec3Like3;
+}
+
+export interface Vec3Like3 {
+  x: number;
+  y: number;
+  z: number;
+}
+
+/**
+ * Render models of a 3D node.
+ *
+ * Deliberately looked up by component class rather than by duck-typing `.model`:
+ * 2D `Graphics` also owns a Model, and treating it as 3D geometry would take it
+ * out of the UI draw-order path it actually belongs to.
+ */
+function modelsOf(node: any): any[] {
+  const keys = ["ModelRenderer", "MeshRenderer", "SkinnedMeshRenderer"];
+  for (const key of keys) {
+    const Cls = cc[key];
+    if (typeof Cls !== "function") continue;
+    const comp = node.getComponent?.(Cls);
+    if (!comp || comp.enabledInHierarchy === false) continue;
+    if (comp.model) return [comp.model];
+    const models = comp.models || comp._models;
+    if (Array.isArray(models) && models.length) return models;
+  }
+  return [];
+}
+
+/** Union of the node's model bounds, or null when it draws no 3D geometry. */
+export function getWorldBounds(node: any): WorldBounds | null {
+  const models = modelsOf(node);
+  if (!models.length) return null;
+
+  let minX = Infinity;
+  let minY = Infinity;
+  let minZ = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  let maxZ = -Infinity;
+  for (const model of models) {
+    const bounds = model?.worldBounds;
+    const c = bounds?.center;
+    const h = bounds?.halfExtents;
+    if (!c || !h) continue;
+    minX = Math.min(minX, c.x - h.x);
+    minY = Math.min(minY, c.y - h.y);
+    minZ = Math.min(minZ, c.z - h.z);
+    maxX = Math.max(maxX, c.x + h.x);
+    maxY = Math.max(maxY, c.y + h.y);
+    maxZ = Math.max(maxZ, c.z + h.z);
+  }
+  if (minX > maxX) return null;
+  return {
+    center: {
+      x: (minX + maxX) / 2,
+      y: (minY + maxY) / 2,
+      z: (minZ + maxZ) / 2,
+    },
+    halfExtents: {
+      x: (maxX - minX) / 2,
+      y: (maxY - minY) / 2,
+      z: (maxZ - minZ) / 2,
+    },
+  };
+}
+
 /**
  * The camera that draws `node`, i.e. the first one in priority order whose
  * visibility mask covers the node's layer — same rule the batcher uses.
