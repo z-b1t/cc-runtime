@@ -53,6 +53,12 @@ const PANELS = [
 ] as const;
 
 const defaultLayout: LayoutConfig = {
+  settings: {
+    showPopoutIcon: false,
+  },
+  header: {
+    popout: false,
+  },
   root: {
     type: "row",
     content: [
@@ -372,6 +378,13 @@ export function App() {
     } catch {
       /* ignore */
     }
+    // Saved layouts keep header.popout as the tooltip string, which wins over
+    // showPopoutIcon — force both off so the icon never comes back.
+    config = {
+      ...config,
+      settings: { ...config.settings, showPopoutIcon: false },
+      header: { ...config.header, popout: false },
+    };
 
     // Container must be visible with real size before loadLayout.
     const start = () => {
