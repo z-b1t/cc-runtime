@@ -74,7 +74,18 @@ export const Event = {
   assetsRemove: "assets::remove",
   assetsClear: "assets::clear",
   profilerSample: "profiler::sample",
+  nodeDrawCalls: "profiler::nodeDrawCalls",
 } as const;
+
+/** Draw calls of the last drawn frame, numbered in submit order. */
+export type NodeDrawCalls = {
+  /** Every draw call of the frame, including ones no 2D node owns. */
+  total: number;
+  /** Panel node id -> 1-based index of the first draw call the node opens. */
+  index: Record<string, number>;
+};
+
+export const EMPTY_NODE_DRAW_CALLS: NodeDrawCalls = { total: 0, index: {} };
 
 /** One 500ms aggregation window pushed from the page to the panel. */
 export interface ProfilerSample {

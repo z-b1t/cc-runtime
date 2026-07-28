@@ -5,7 +5,10 @@ import {
   PauseCircleOutlined,
   PlayCircleOutlined,
 } from "@ant-design/icons";
-import type { ProfilerSample } from "@shared/protocol";
+import {
+  EMPTY_NODE_DRAW_CALLS,
+  type ProfilerSample,
+} from "@shared/protocol";
 import { callRpc, Rpc } from "../bridge/rpc";
 import {
   getProfilerState,
@@ -14,6 +17,7 @@ import {
   subscribeProfiler,
   type ProfilerState,
 } from "../profilerStore";
+import { setState } from "../store";
 import { Sparkline } from "./Sparkline";
 
 type MetricUnit = "" | "ms" | "MB";
@@ -97,6 +101,8 @@ export function Profiler() {
   const toggle = useCallback(async () => {
     const next = !getProfilerState().running;
     setProfilerState({ running: next });
+    // Node tree DC indices would otherwise keep showing the last frame forever.
+    if (!next) setState({ nodeDc: EMPTY_NODE_DRAW_CALLS });
     const ok = await callRpc(next ? Rpc.profilerStart : Rpc.profilerStop);
     if (next && !ok) setProfilerState({ running: false });
   }, []);

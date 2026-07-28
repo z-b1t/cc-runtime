@@ -8,7 +8,7 @@ import {
   BorderOuterOutlined,
   StopOutlined,
 } from "@ant-design/icons";
-import { LAYOUT_STORAGE_KEY } from "@shared/protocol";
+import { EMPTY_NODE_DRAW_CALLS, LAYOUT_STORAGE_KEY } from "@shared/protocol";
 import { injectIntoPage, isInjected } from "./bridge/inject";
 import {
   callRpc,
@@ -179,13 +179,23 @@ export function App() {
     });
     onEvent(Event.assetsClear, () => setState({ assets: {} }));
     onEvent(Event.profilerSample, (sample: any) => pushSample(sample));
+    onEvent(Event.nodeDrawCalls, (dc: any) =>
+      setState({ nodeDc: dc || EMPTY_NODE_DRAW_CALLS }),
+    );
     onEvent("tabReloaded", (data: any) => {
       const inspected = chrome.devtools.inspectedWindow.tabId;
       if (data?.tabId != null && data.tabId !== inspected) return;
       message.loading({ content: "页面正在刷新，请稍等...", key: "inj", duration: 0 });
       // The injected collector is gone with the old page.
       resetProfiler();
-      setState({ injecting: true, scene: null, details: null, selectedId: null, flashNodeId: null });
+      setState({
+        injecting: true,
+        scene: null,
+        details: null,
+        selectedId: null,
+        flashNodeId: null,
+        nodeDc: EMPTY_NODE_DRAW_CALLS,
+      });
       bootstrap();
     });
 

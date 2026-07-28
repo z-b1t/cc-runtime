@@ -1,4 +1,9 @@
-import type { NodeDetails, SceneNodeData } from "@shared/protocol";
+import {
+  EMPTY_NODE_DRAW_CALLS,
+  type NodeDetails,
+  type NodeDrawCalls,
+  type SceneNodeData,
+} from "@shared/protocol";
 
 export type AppState = {
   injecting: boolean;
@@ -11,6 +16,8 @@ export type AppState = {
   expandedKeys: string[];
   flashNodeId: string | null;
   assets: Record<string, any>;
+  /** Only populated while the profiler is capturing. */
+  nodeDc: NodeDrawCalls;
 };
 
 type Listener = () => void;
@@ -26,6 +33,7 @@ let state: AppState = {
   expandedKeys: [],
   flashNodeId: null,
   assets: {},
+  nodeDc: EMPTY_NODE_DRAW_CALLS,
 };
 
 const listeners = new Set<Listener>();

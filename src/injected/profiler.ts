@@ -1,4 +1,9 @@
 import { Event, Rpc, type ProfilerSample } from "../shared/protocol";
+import {
+  startDrawCallHooks,
+  stopDrawCallHooks,
+  takeNodeDrawCalls,
+} from "./drawCall";
 import { registerHandler, sendEvent } from "./message";
 
 declare const cc: any;
@@ -136,6 +141,7 @@ function flushWindow(t: number) {
   sendEvent(Event.profilerSample, sample).then(() => {
     unackedWindows = 0;
   });
+  sendEvent(Event.nodeDrawCalls, takeNodeDrawCalls());
 }
 
 type FrameHook = [event: string | undefined, callback: () => void];
@@ -168,6 +174,7 @@ function start() {
   for (const [event, callback] of frameHooks()) {
     if (event) cc.director.on(event, callback);
   }
+  startDrawCallHooks();
 }
 
 function stop() {
@@ -176,6 +183,7 @@ function stop() {
   for (const [event, callback] of frameHooks()) {
     if (event) cc.director.off(event, callback);
   }
+  stopDrawCallHooks();
   resetCounters();
 }
 

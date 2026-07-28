@@ -12,17 +12,52 @@ import {
   subscribe,
   type AppState,
 } from "../store";
-import type { SceneNodeData } from "@shared/protocol";
+import type { NodeDrawCalls, SceneNodeData } from "@shared/protocol";
 import { locateNodeInTree, selectNodeInPanel } from "../selectNode";
+
+type DcGutter = {
+  /** Colors the gutter; `data-dc` carries the text CSS renders. */
+  className?: string;
+  "data-dc"?: string;
+  tip?: string;
+};
+
+/**
+ * The draw call index belongs in a gutter at the tree's left edge, so it goes
+ * through `data-dc` — rc-tree forwards `data-*` onto the row element — and is
+ * drawn by CSS instead of living inside the indented row content.
+ */
+function dcGutter(
+  node: SceneNodeData,
+  nodeDc: NodeDrawCalls,
+  isRoot: boolean,
+): DcGutter {
+  // The scene root never renders, so its gutter is free for the frame total.
+  if (isRoot && nodeDc.total > 0) {
+    return { className: "dc-total", "data-dc": `DC[${nodeDc.total}]` };
+  }
+  const at = nodeDc.index[node.id] || 0;
+  if (at <= 0) return {};
+  return {
+    className: at % 2 === 1 ? "dc-odd" : "dc-even",
+    "data-dc": String(at),
+    tip: `本帧第 ${at} 个 draw call 由该节点开启，共 ${nodeDc.total} 个`,
+  };
+}
 
 function toTreeData(
   node: SceneNodeData,
   flashNodeId: string | null,
+  nodeDc: NodeDrawCalls,
+  isRoot = false,
 ): DataNode {
+  const { tip, ...gutter } = dcGutter(node, nodeDc, isRoot);
   return {
+    ...gutter,
     key: node.id,
     title: (
       <span
+        title={tip}
         className={
           flashNodeId === node.id ? "tree-node-title is-flashing" : "tree-node-title"
         }
@@ -31,7 +66,7 @@ function toTreeData(
       </span>
     ),
     disableCheckbox: false,
-    children: (node.children || []).map((c) => toTreeData(c, flashNodeId)),
+    children: (node.children || []).map((c) => toTreeData(c, flashNodeId, nodeDc)),
   };
 }
 
@@ -62,10 +97,12 @@ export function NodeTree() {
 
   const treeData = useMemo(() => {
     if (matches) {
-      return matches.map((n) => toTreeData(n, snap.flashNodeId));
+      return matches.map((n) => toTreeData(n, snap.flashNodeId, snap.nodeDc));
     }
-    return snap.scene ? [toTreeData(snap.scene, snap.flashNodeId)] : [];
-  }, [matches, snap.scene, snap.flashNodeId]);
+    return snap.scene
+      ? [toTreeData(snap.scene, snap.flashNodeId, snap.nodeDc, true)]
+      : [];
+  }, [matches, snap.scene, snap.flashNodeId, snap.nodeDc]);
 
   const compTypeOptions = useMemo(
     () =>
@@ -195,6 +232,8 @@ export function NodeTree() {
         </Button>
       </Space>
       <Tree
+        // The gutter only earns its width once the profiler reports draw calls.
+        className={snap.nodeDc.total > 0 ? "tree-dc-gutter" : undefined}
         checkable
         checkStrictly
         draggable={{ icon: false }}

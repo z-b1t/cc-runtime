@@ -793,6 +793,40 @@
   border-color: #fa8c16;
 }
 
+/* Draw call indices sit in a gutter at the tree's left edge, outside the
+   indented rows, so consecutive draw calls stay readable at any depth. */
+.panel-body .ant-tree.tree-dc-gutter {
+  padding-left: 34px;
+}
+
+.panel-body .ant-tree.tree-dc-gutter .ant-tree-treenode[data-dc]::before {
+  content: attr(data-dc);
+  position: absolute;
+  left: -34px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Alternating colors so a node's index is easy to tell from its neighbour's. */
+.panel-body .ant-tree.tree-dc-gutter .ant-tree-treenode.dc-odd::before {
+  color: #7b91ff;
+}
+
+.panel-body .ant-tree.tree-dc-gutter .ant-tree-treenode.dc-even::before {
+  color: #ff8968;
+}
+
+.panel-body .ant-tree.tree-dc-gutter .ant-tree-treenode.dc-total::before {
+  color: #ff8968;
+  font-size: 10px;
+}
+
 .tree-node-title.is-flashing {
   animation: tree-node-flash 0.3s ease-in-out 3;
   border-radius: 2px;
@@ -800,6 +834,7 @@
 }
 
 .panel-body .ant-tree .ant-tree-treenode {
+  position: relative;
   padding: 0;
   align-items: center;
 }
