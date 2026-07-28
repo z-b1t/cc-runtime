@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
-import { LayoutConfig, GoldenLayout } from "golden-layout";
+import { LayoutConfig, GoldenLayout, type ComponentContainer } from "golden-layout";
 import { Menu, message, Spin } from "antd";
 import {
   AimOutlined,
@@ -19,9 +19,11 @@ import {
   waitForEvent,
 } from "./bridge/rpc";
 import { collectIds, findNode, getState, setState, subscribe } from "./store";
+import { pushSample, resetProfiler } from "./profilerStore";
 import { selectNodeInPanel } from "./selectNode";
 import { NodeTree } from "./panels/NodeTree";
 import { NodeDetails } from "./panels/NodeDetails";
+import { Profiler } from "./panels/Profiler";
 import "golden-layout/dist/css/goldenlayout-base.css";
 import "golden-layout/dist/css/themes/goldenlayout-dark-theme.css";
 import "antd/dist/antd.dark.css";
@@ -37,18 +39,25 @@ const defaultLayout: LayoutConfig = {
         title: "节点树",
       },
       {
-        type: "component",
-        componentType: "NodeDetails",
-        title: "节点详情",
+        type: "stack",
+        content: [
+          {
+            type: "component",
+            componentType: "NodeDetails",
+            title: "节点详情",
+          },
+          {
+            type: "component",
+            componentType: "Profiler",
+            title: "性能",
+          },
+        ],
       },
     ],
   },
 };
 
-function mountReact(
-  container: { element: HTMLElement; on: (ev: string, cb: () => void) => void },
-  element: React.ReactElement,
-) {
+function mountReact(container: ComponentContainer, element: React.ReactElement) {
   const el = container.element;
   el.classList.add("gl-react-host");
   ReactDOM.render(element, el);
@@ -169,10 +178,13 @@ export function App() {
       setState({ assets: next });
     });
     onEvent(Event.assetsClear, () => setState({ assets: {} }));
+    onEvent(Event.profilerSample, (sample: any) => pushSample(sample));
     onEvent("tabReloaded", (data: any) => {
       const inspected = chrome.devtools.inspectedWindow.tabId;
       if (data?.tabId != null && data.tabId !== inspected) return;
       message.loading({ content: "页面正在刷新，请稍等...", key: "inj", duration: 0 });
+      // The injected collector is gone with the old page.
+      resetProfiler();
       setState({ injecting: true, scene: null, details: null, selectedId: null, flashNodeId: null });
       bootstrap();
     });
@@ -192,6 +204,9 @@ export function App() {
     });
     layout.registerComponentFactoryFunction("NodeDetails", (container) => {
       mountReact(container, <NodeDetails />);
+    });
+    layout.registerComponentFactoryFunction("Profiler", (container) => {
+      mountReact(container, <Profiler />);
     });
 
     let config = defaultLayout;

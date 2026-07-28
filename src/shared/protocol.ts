@@ -34,6 +34,10 @@ export const Rpc = {
   copyNode: "copyNode",
   /** Apply clipboard node values onto the selected node. */
   pasteNodeValues: "pasteNodeValues",
+  /** Hook director frame events and start pushing profiler samples. */
+  profilerStart: "profiler::start",
+  /** Unhook director frame events and reset counters. */
+  profilerStop: "profiler::stop",
 } as const;
 
 export interface ComponentClipboardPayload {
@@ -69,13 +73,38 @@ export const Event = {
   assetsAdd: "assets::add",
   assetsRemove: "assets::remove",
   assetsClear: "assets::clear",
+  profilerSample: "profiler::sample",
 } as const;
+
+/** One 500ms aggregation window pushed from the page to the panel. */
+export interface ProfilerSample {
+  /** performance.now() at the end of the window. */
+  t: number;
+  fps: number;
+  frame: number;
+  logic: number;
+  physics: number;
+  render: number;
+  present: number;
+  draws: number;
+  instances: number;
+  tricount: number;
+  /** GFX texture memory, MB. */
+  textureMemory: number;
+  /** GFX buffer memory, MB. */
+  bufferMemory: number;
+  /** Chromium-only, MB. Absent elsewhere. */
+  jsHeap?: number;
+  jsHeapLimit?: number;
+}
 
 /** Shared visitor / construct keys (both panel & page use the same build-time constants). */
 export const VISITOR_KEY = "[CC-RUNTIME::VISITOR_KEY]";
 export const NEW_KEY = "[CC-RUNTIME::NEW_KEY]";
 
-export const LAYOUT_STORAGE_KEY = "cc-runtime::layoutConfig";
+/** Bump the suffix whenever defaultLayout gains a panel, otherwise saved
+ * layouts keep hiding the new one. */
+export const LAYOUT_STORAGE_KEY = "cc-runtime::layoutConfig::v2";
 
 export type BatchItem = { id: string; type: string; data?: unknown };
 export type Envelope = { type: string; id?: string; data?: unknown };

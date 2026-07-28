@@ -1363,6 +1363,89 @@
   color: var(--cc-accent);
 }
 
+/* —— Profiler panel —— */
+.profiler-panel {
+  height: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+  overflow: auto;
+  background: #2a2a2a;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 12px;
+}
+
+.profiler-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.profiler-hint {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.profiler-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.profiler-card {
+  background: #333;
+  border: 1px solid #1a1a1a;
+  border-radius: 3px;
+  padding: 6px 8px 4px;
+}
+
+.profiler-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.profiler-card-label {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profiler-card-value {
+  font-family: Consolas, monospace;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.profiler-card-value em {
+  font-size: 10px;
+  font-style: normal;
+  margin-left: 2px;
+  opacity: 0.7;
+}
+
+.profiler-card-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 10px;
+  padding-top: 2px;
+}
+
+.profiler-footnote {
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 11px;
+}
+
 html,
 body,
 #root {
