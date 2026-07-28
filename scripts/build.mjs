@@ -32,7 +32,6 @@ async function buildExtensionScripts() {
     { in: "src/background/index.ts", out: "background.js" },
     { in: "src/content/index.ts", out: "content.js" },
     { in: "src/injected/index.ts", out: "injected.js" },
-    { in: "src/assets/devtools.ts", out: "assets/devtools.js" },
   ];
   for (const e of entries) {
     await esbuild.build({
@@ -57,8 +56,9 @@ async function main() {
   await viteBuild({ configFile: path.join(root, "vite.config.ts") });
 
   copyFile(path.join(root, "src/manifest.json"), path.join(dist, "manifest.json"));
-  copyFile(path.join(root, "src/assets/icon.png"), path.join(dist, "assets/icon.png"));
-  copyFile(path.join(root, "src/assets/devtools.html"), path.join(dist, "assets/devtools.html"));
+  for (const name of ["icon.png", "icon-16.png", "icon-32.png", "icon-48.png", "icon-128.png"]) {
+    copyFile(path.join(root, "src/assets", name), path.join(dist, "assets", name));
+  }
 
   // Chrome extension pages break on Vite's crossorigin attribute for module scripts.
   const panelHtml = path.join(dist, "devtool", "index.html");

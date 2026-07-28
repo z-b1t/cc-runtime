@@ -1,28 +1,26 @@
 /** Inject injected.js into the inspected page once window.cc is ready. */
 
 import { Msg } from "@shared/protocol";
+import { getInspectedTabId } from "./rpc";
 
 const INJECT_FLAG = "__cc_runtime_script_injected__";
 
-function evalInPage(code: string): Promise<unknown> {
-  return new Promise((resolve, reject) => {
-    chrome.devtools.inspectedWindow.eval(code, (result, exceptionInfo) => {
-      if (
-        exceptionInfo &&
-        (exceptionInfo as chrome.devtools.inspectedWindow.EvaluationExceptionInfo)
-          .isException
-      ) {
-        reject(new Error(String((exceptionInfo as any).value || "eval failed")));
-        return;
-      }
-      resolve(result);
-    });
-  });
+function requireTabId(): number {
+  const tabId = getInspectedTabId();
+  if (tabId == null) throw new Error("tabId not set");
+  return tabId;
 }
 
 export async function isInjected(): Promise<boolean> {
   try {
-    return !!(await evalInPage(`window.${INJECT_FLAG} === true`));
+    const tabId = requireTabId();
+    const results = await chrome.scripting.executeScript({
+      target: { tabId },
+      world: "MAIN",
+      func: (flag: string) => !!(window as any)[flag],
+      args: [INJECT_FLAG],
+    });
+    return !!results[0]?.result;
   } catch {
     return false;
   }
@@ -35,33 +33,41 @@ export async function isInjected(): Promise<boolean> {
 export async function injectIntoPage(): Promise<boolean> {
   if (await isInjected()) return true;
 
+  const tabId = requireTabId();
   const url = chrome.runtime.getURL("injected.js");
   const loadingType = Msg.page2content_request;
-  const code = `
-(async function () {
-  if (window.${INJECT_FLAG}) return;
-  window.${INJECT_FLAG} = true;
-  while (!window.cc) {
-    await new Promise(function (resolve) { setTimeout(resolve, 100); });
-  }
-  var temp = document.createElement("script");
-  temp.setAttribute("type", "text/javascript");
-  temp.src = ${JSON.stringify(url)};
-  temp.onload = function () {
-    window.postMessage({
-      type: ${JSON.stringify(loadingType)},
-      id: Date.now() + "-" + Math.random(),
-      data: [{ id: "lc", type: "loadingComplete", data: null }]
-    }, "*");
-  };
-  temp.onerror = function () {
-    window.${INJECT_FLAG} = false;
-    console.error("[cc-runtime] failed to load injected.js");
-  };
-  (document.head || document.documentElement).appendChild(temp);
-})();
-true;
-`;
-  await evalInPage(code);
+
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    world: "MAIN",
+    func: (scriptUrl: string, flag: string, msgType: string) => {
+      void (async () => {
+        if ((window as any)[flag]) return;
+        (window as any)[flag] = true;
+        while (!(window as any).cc) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        const temp = document.createElement("script");
+        temp.setAttribute("type", "text/javascript");
+        temp.src = scriptUrl;
+        temp.onload = () => {
+          window.postMessage(
+            {
+              type: msgType,
+              id: Date.now() + "-" + Math.random(),
+              data: [{ id: "lc", type: "loadingComplete", data: null }],
+            },
+            "*",
+          );
+        };
+        temp.onerror = () => {
+          (window as any)[flag] = false;
+          console.error("[cc-runtime] failed to load injected.js");
+        };
+        (document.head || document.documentElement).appendChild(temp);
+      })();
+    },
+    args: [url, INJECT_FLAG, loadingType],
+  });
   return false;
 }

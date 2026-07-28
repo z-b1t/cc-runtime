@@ -11,6 +11,20 @@ export const Msg = {
   devtool2content_response: "cc-runtime::devtool2content_response",
   background2devtool_tabReloaded: "cc-runtime::background2devtool_request|tabReloaded",
   devtool2background_response: "cc-runtime::devtool2background_response",
+  /** Content / action → background: open the side panel for this tab. */
+  openSidePanel: "cc-runtime::openSidePanel",
+  /** Content → background: is window.cc present in the sender tab? */
+  probeCc: "cc-runtime::probeCc",
+  /** Side panel page → background: this tab's panel became visible. */
+  sidePanelOpened: "cc-runtime::sidePanelOpened",
+  /** Side panel page → background: this tab's panel is closing. */
+  sidePanelClosed: "cc-runtime::sidePanelClosed",
+  /** Background → content: re-apply launcher edge position after panel close. */
+  launcherRelayout: "cc-runtime::launcherRelayout",
+  /** Background → content: hide page launcher while side panel is open. */
+  launcherHide: "cc-runtime::launcherHide",
+  /** Background → content: show page launcher again after side panel closes. */
+  launcherShow: "cc-runtime::launcherShow",
 } as const;
 
 export const Rpc = {

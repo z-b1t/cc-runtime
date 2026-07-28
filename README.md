@@ -17,4 +17,4 @@ npm run build         # → dist/
 npm run smoke
 ```
 
-Chrome「加载已解压的扩展程序」选择：`dist`
+Chrome「加载已解压的扩展程序」选择：`dist`。打开页面后右下角有 **CC** 入口，点击即可打开侧边栏（也可点工具栏图标）。

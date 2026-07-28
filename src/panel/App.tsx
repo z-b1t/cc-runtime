@@ -17,12 +17,15 @@ import {
 import {
   EMPTY_NODE_DRAW_CALLS,
   LAYOUT_STORAGE_KEY,
+  Msg,
   type InspectStartResult,
 } from "@shared/protocol";
 import { injectIntoPage, isInjected } from "./bridge/inject";
+import { bindSidePanelPort, connectSidePanelPort } from "./bridge/panelPort";
 import {
   callRpc,
   Event,
+  getInspectedTabId,
   onEvent,
   Rpc,
   setInspectedTabId,
@@ -129,8 +132,27 @@ export function App() {
   }), []);
 
   const bootstrap = useCallback(async () => {
-    const id = chrome.devtools.inspectedWindow.tabId;
-    setInspectedTabId(id);
+    let id = getInspectedTabId();
+    if (id == null) {
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        lastFocusedWindow: true,
+      });
+      if (tab?.id == null) {
+        message.error("无法获取当前标签页");
+        setState({ injecting: false });
+        return;
+      }
+      id = tab.id;
+      setInspectedTabId(id);
+    }
+    bindSidePanelPort(id);
+    chrome.runtime.sendMessage(
+      { type: Msg.sidePanelOpened, tabId: id },
+      () => {
+        void chrome.runtime.lastError;
+      },
+    );
     setState({ injecting: true });
     message.loading({ content: "加载中，请稍等", key: "inj", duration: 0 });
     try {
@@ -254,7 +276,8 @@ export function App() {
       setState({ nodeDc: dc || EMPTY_NODE_DRAW_CALLS }),
     );
     onEvent("tabReloaded", (data: any) => {
-      const inspected = chrome.devtools.inspectedWindow.tabId;
+      const inspected = getInspectedTabId();
+      if (inspected == null) return;
       if (data?.tabId != null && data.tabId !== inspected) return;
       message.loading({ content: "页面正在刷新，请稍等...", key: "inj", duration: 0 });
       // The injected collector is gone with the old page.
@@ -276,6 +299,28 @@ export function App() {
     bootstrap();
   }, [bootstrap]);
 
+  // Tell background when this tab's side panel closes so it disables the
+  // tab-scoped panel and the page launcher can restore its edge position.
+  // Port disconnect (below) is the reliable close signal; pagehide is backup.
+  useEffect(() => {
+    connectSidePanelPort();
+    const notifyClosed = () => {
+      const id = getInspectedTabId();
+      if (id == null) return;
+      chrome.runtime.sendMessage(
+        { type: Msg.sidePanelClosed, tabId: id },
+        () => {
+          void chrome.runtime.lastError;
+        },
+      );
+    };
+    window.addEventListener("pagehide", notifyClosed);
+    return () => {
+      window.removeEventListener("pagehide", notifyClosed);
+      notifyClosed();
+    };
+  }, []);
+
   // ESC has to work from the panel too: while the pointer is over the panel,
   // the page never sees the keystroke.
   useEffect(() => {
@@ -285,7 +330,7 @@ export function App() {
       e.preventDefault();
       void stopInspect();
     };
-    // Closing devtools mid-pick would otherwise leave the page swallowing input.
+    // Closing the side panel mid-pick would otherwise leave the page swallowing input.
     const onPageHide = () => {
       void callRpc(Rpc.inspectStop);
     };
