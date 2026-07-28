@@ -16,8 +16,11 @@ export const Msg = {
 export const Rpc = {
   refreshSceneData: "refreshSceneData",
   getNodeDetails: "getNodeDetails",
-  startInspectNode: "startInspectNode",
-  stopInspectNode: "stopInspectNode",
+  /** Enter pick mode in the page. Answers with InspectStartResult. */
+  inspectStart: "inspect::start",
+  inspectStop: "inspect::stop",
+  /** Outline a node by panel id, or clear the outline with null. */
+  highlightNode: "inspect::highlight",
   dragDrop: "dragDrop",
   logNode: "logNode",
   log: "log",
@@ -60,10 +63,36 @@ export interface NodeClipboardPayload {
   };
 }
 
+export interface InspectStartResult {
+  ok: boolean;
+  /** Human-readable failure cause, shown by the panel. */
+  reason?: string;
+}
+
+/** Node currently under the pointer while picking. */
+export interface InspectHover {
+  /** Panel node id (Mutator id). */
+  id: string;
+  name: string;
+  /** How many nodes the pointer hits, for Alt+wheel cycling. */
+  candidates: number;
+  /** 0-based position of `id` within those candidates, front-most first. */
+  index: number;
+}
+
+export interface InspectPick {
+  id: string;
+}
+
 export const Event = {
   loadingComplete: "loadingComplete",
   sceneData: "sceneData",
-  selectNode: "selectNode",
+  /** Pick-mode preview: InspectHover, or null once the pointer leaves. */
+  inspectHover: "inspect::hover",
+  /** Pick-mode commit. */
+  inspectPick: "inspect::pick",
+  /** Pick mode ended in the page (ESC, or auto-exit after a commit). */
+  inspectEnd: "inspect::end",
   syncNodeProp: "syncNodeProp",
   syncCompProp: "syncCompProp",
   updateTransform: "updateTransform",

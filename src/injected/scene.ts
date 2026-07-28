@@ -1,4 +1,4 @@
-import { debounce, throttle } from "lodash";
+import { throttle } from "lodash";
 import { cleanFloat } from "../shared/number";
 import { Event, Rpc } from "../shared/protocol";
 import { serializeComponent } from "./attrs";
@@ -9,6 +9,21 @@ import { getMutatorById, Mutator, symbolMutate } from "./mutator";
 declare const cc: any;
 
 const nodeMutators: Record<string, Mutator> = {};
+
+/**
+ * Panel id for a node the scene walk has not reached yet (freshly created, or
+ * picked before the throttled scene push caught up).
+ */
+export function ensureNodeMutator(node: any): Mutator | null {
+  if (!node || node.isValid === false) return null;
+  let m = node[symbolMutate] as Mutator | undefined;
+  if (!m) {
+    m = new Mutator(node);
+    node[symbolMutate] = m;
+  }
+  if (!nodeMutators[m.id]) nodeMutators[m.id] = m;
+  return m;
+}
 
 const pushScene = throttle(() => {
   const scene = cc.director.getScene();
@@ -105,7 +120,6 @@ function walkNode(node: any, parentId: string | null = null): any {
   };
 }
 
-let stopInspect: (() => void) | null = null;
 let stopDetails: (() => void) | null = null;
 
 export function hookScene() {
@@ -157,60 +171,6 @@ export function hookScene() {
     parent.insertChild(drag, insertAt);
   });
 
-  registerHandler(Rpc.startInspectNode, () =>
-    new Promise((resolve) => {
-      stopInspect?.();
-      stopInspect = null;
-      const scene = cc.director.getScene();
-      if (!scene) {
-        resolve(null);
-        return;
-      }
-      const select = throttle(async (uuid: string) => {
-        await sendEvent(Event.selectNode, uuid);
-      }, 100);
-      const onEnter = debounce((ev: any) => {
-        ev.propagationImmediateStopped = true;
-        const t = ev.target;
-        if (t instanceof cc.Node) select(t.uuid);
-      }, 300);
-      const onUp = async (ev: any) => {
-        ev.propagationImmediateStopped = true;
-        const t = ev.target;
-        if (t instanceof cc.Node) {
-          console.log(t);
-          await select(t.uuid);
-          resolve(t.uuid);
-        } else resolve(null);
-        stopInspect?.();
-        stopInspect = null;
-      };
-      const block = (ev: any) => {
-        ev.propagationImmediateStopped = true;
-      };
-      scene.on(cc.Node.EventType.MOUSE_ENTER, onEnter, null, true);
-      scene.on(cc.Node.EventType.MOUSE_UP, onUp, null, true);
-      scene.on("click", block, null, true);
-      scene.on(cc.Node.EventType.MOUSE_DOWN, block, null, true);
-      scene.on(cc.Node.EventType.TOUCH_START, block, null, true);
-      scene.on(cc.Node.EventType.TOUCH_END, block, null, true);
-      stopInspect = () => {
-        if (!scene.isValid) return;
-        scene.off(cc.Node.EventType.MOUSE_ENTER, onEnter, null, true);
-        scene.off(cc.Node.EventType.MOUSE_UP, onUp, null, true);
-        scene.off("click", block, null, true);
-        scene.off(cc.Node.EventType.MOUSE_DOWN, block, null, true);
-        scene.off(cc.Node.EventType.TOUCH_START, block, null, true);
-        scene.off(cc.Node.EventType.TOUCH_END, block, null, true);
-      };
-    }),
-  );
-
-  registerHandler(Rpc.stopInspectNode, () => {
-    stopInspect?.();
-    stopInspect = null;
-  });
-
   registerHandler(Rpc.resolveVisitor, (visitorId: any) => {
     const id = String(visitorId || "");
     if (!id) return null;
@@ -232,17 +192,8 @@ export function hookScene() {
       // Fallback for Component-like objects without instanceof match.
       node = target.node;
     }
-    if (!node || (node.isValid === false)) return null;
-
-    let m = node[symbolMutate] as Mutator | undefined;
-    if (!m) {
-      m = new Mutator(node);
-      node[symbolMutate] = m;
-      nodeMutators[m.id] = m;
-    } else if (!nodeMutators[m.id]) {
-      nodeMutators[m.id] = m;
-    }
-    return { nodeId: m.id };
+    const m = ensureNodeMutator(node);
+    return m ? { nodeId: m.id } : null;
   });
 
   registerHandler(Rpc.flashNode, async (nodeId: any) => {

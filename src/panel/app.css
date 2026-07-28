@@ -8,6 +8,62 @@
   position: relative;
 }
 
+/* Compact menubar (IDE-like), not a large toolbar. */
+.cc-runtime-app > .ant-menu-horizontal {
+  line-height: 28px;
+  height: 28px;
+  font-size: 12px;
+  border-bottom: 1px solid #303030;
+}
+
+.cc-runtime-app > .ant-menu-horizontal > .ant-menu-item,
+.cc-runtime-app > .ant-menu-horizontal > .ant-menu-submenu {
+  padding: 0 10px;
+  margin: 0;
+  line-height: 28px;
+  height: 28px;
+  top: 0;
+}
+
+.cc-runtime-app > .ant-menu-horizontal > .ant-menu-item .anticon,
+.cc-runtime-app > .ant-menu-horizontal > .ant-menu-submenu .anticon {
+  font-size: 12px;
+}
+
+.cc-runtime-app > .ant-menu-horizontal > .ant-menu-submenu > .ant-menu-submenu-title {
+  padding: 0;
+  margin: 0;
+  line-height: 28px;
+  height: 28px;
+}
+
+/* Submenu portals to body — style via popupClassName, not under .cc-runtime-app. */
+.ant-menu-submenu-popup.cc-menubar-popup,
+.ant-menu-submenu-popup.cc-menubar-popup .ant-menu {
+  z-index: 10050; /* Above Golden Layout maximised stack (9999). */
+  font-size: 12px;
+  min-width: 0;
+  padding: 2px 0;
+}
+
+.ant-menu-submenu-popup.cc-menubar-popup .ant-menu-item,
+.ant-menu-submenu-popup.cc-menubar-popup .ant-menu-submenu-title {
+  height: 24px !important;
+  line-height: 24px !important;
+  margin: 0 !important;
+  padding: 0 12px !important;
+  font-size: 12px;
+}
+
+.ant-menu-submenu-popup.cc-menubar-popup .ant-menu-item .anticon {
+  font-size: 12px;
+  margin-right: 6px;
+}
+
+.ant-menu-submenu-popup.cc-menubar-popup .ant-menu-item-divider {
+  margin: 2px 0;
+}
+
 .layout-host {
   flex: 1;
   min-height: 0;
@@ -833,6 +889,15 @@
   padding: 0 4px;
 }
 
+/* Pick-mode preview. Blue matches the outline drawn over the game, and stays
+   clearly apart from the orange flash and antd's own selected row. */
+.tree-node-title.is-hovered {
+  background: rgba(74, 163, 255, 0.22);
+  box-shadow: inset 0 0 0 1px #4aa3ff;
+  border-radius: 2px;
+  padding: 0 4px;
+}
+
 .panel-body .ant-tree .ant-tree-treenode {
   position: relative;
   padding: 0;
@@ -890,7 +955,7 @@
 
 .inject-mask {
   position: absolute;
-  inset: 46px 0 28px 0;
+  inset: 28px 0 28px 0;
   display: flex;
   align-items: center;
   justify-content: center;

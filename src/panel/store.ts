@@ -15,6 +15,8 @@ export type AppState = {
   compTypeFilter: string[];
   expandedKeys: string[];
   flashNodeId: string | null;
+  /** Node under the pointer while picking — preview only, never a selection. */
+  hoverNodeId: string | null;
   assets: Record<string, any>;
   /** Only populated while the profiler is capturing. */
   nodeDc: NodeDrawCalls;
@@ -32,6 +34,7 @@ let state: AppState = {
   compTypeFilter: [],
   expandedKeys: [],
   flashNodeId: null,
+  hoverNodeId: null,
   assets: {},
   nodeDc: EMPTY_NODE_DRAW_CALLS,
 };

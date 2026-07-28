@@ -45,9 +45,21 @@ function dcGutter(
   };
 }
 
+function titleClass(
+  node: SceneNodeData,
+  flashNodeId: string | null,
+  hoverNodeId: string | null,
+): string {
+  const classes = ["tree-node-title"];
+  if (flashNodeId === node.id) classes.push("is-flashing");
+  if (hoverNodeId === node.id) classes.push("is-hovered");
+  return classes.join(" ");
+}
+
 function toTreeData(
   node: SceneNodeData,
   flashNodeId: string | null,
+  hoverNodeId: string | null,
   nodeDc: NodeDrawCalls,
   isRoot = false,
 ): DataNode {
@@ -56,17 +68,14 @@ function toTreeData(
     ...gutter,
     key: node.id,
     title: (
-      <span
-        title={tip}
-        className={
-          flashNodeId === node.id ? "tree-node-title is-flashing" : "tree-node-title"
-        }
-      >
+      <span title={tip} className={titleClass(node, flashNodeId, hoverNodeId)}>
         {node.name || "<Unnamed>"}
       </span>
     ),
     disableCheckbox: false,
-    children: (node.children || []).map((c) => toTreeData(c, flashNodeId, nodeDc)),
+    children: (node.children || []).map((c) =>
+      toTreeData(c, flashNodeId, hoverNodeId, nodeDc),
+    ),
   };
 }
 
@@ -97,12 +106,14 @@ export function NodeTree() {
 
   const treeData = useMemo(() => {
     if (matches) {
-      return matches.map((n) => toTreeData(n, snap.flashNodeId, snap.nodeDc));
+      return matches.map((n) =>
+        toTreeData(n, snap.flashNodeId, snap.hoverNodeId, snap.nodeDc),
+      );
     }
     return snap.scene
-      ? [toTreeData(snap.scene, snap.flashNodeId, snap.nodeDc, true)]
+      ? [toTreeData(snap.scene, snap.flashNodeId, snap.hoverNodeId, snap.nodeDc, true)]
       : [];
-  }, [matches, snap.scene, snap.flashNodeId, snap.nodeDc]);
+  }, [matches, snap.scene, snap.flashNodeId, snap.hoverNodeId, snap.nodeDc]);
 
   const compTypeOptions = useMemo(
     () =>

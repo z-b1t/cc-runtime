@@ -1,6 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
-import { LayoutConfig, GoldenLayout, type ComponentContainer } from "golden-layout";
+import {
+  LayoutConfig,
+  GoldenLayout,
+  ContentItem,
+  type ComponentContainer,
+  type ComponentItem,
+} from "golden-layout";
 import { Menu, message, Spin } from "antd";
 import {
   AimOutlined,
@@ -8,7 +14,11 @@ import {
   BorderOuterOutlined,
   StopOutlined,
 } from "@ant-design/icons";
-import { EMPTY_NODE_DRAW_CALLS, LAYOUT_STORAGE_KEY } from "@shared/protocol";
+import {
+  EMPTY_NODE_DRAW_CALLS,
+  LAYOUT_STORAGE_KEY,
+  type InspectStartResult,
+} from "@shared/protocol";
 import { injectIntoPage, isInjected } from "./bridge/inject";
 import {
   callRpc,
@@ -20,7 +30,11 @@ import {
 } from "./bridge/rpc";
 import { collectIds, findNode, getState, setState, subscribe } from "./store";
 import { pushSample, resetProfiler } from "./profilerStore";
-import { selectNodeInPanel } from "./selectNode";
+import {
+  locateNodeInTree,
+  previewNodeInTree,
+  selectNodeInPanel,
+} from "./selectNode";
 import { NodeTree } from "./panels/NodeTree";
 import { NodeDetails } from "./panels/NodeDetails";
 import { Profiler } from "./panels/Profiler";
@@ -28,6 +42,12 @@ import "golden-layout/dist/css/goldenlayout-base.css";
 import "golden-layout/dist/css/themes/goldenlayout-dark-theme.css";
 import "antd/dist/antd.dark.css";
 import "./app.css";
+
+const PANELS = [
+  { key: "win-NodeTree", type: "NodeTree", title: "节点树" },
+  { key: "win-NodeDetails", type: "NodeDetails", title: "节点详情" },
+  { key: "win-Profiler", type: "Profiler", title: "性能" },
+] as const;
 
 const defaultLayout: LayoutConfig = {
   root: {
@@ -64,6 +84,37 @@ function mountReact(container: ComponentContainer, element: React.ReactElement) 
   container.on("destroy", () => {
     ReactDOM.unmountComponentAtNode(el);
   });
+}
+
+function findComponentByType(
+  layout: GoldenLayout,
+  type: string,
+): ComponentItem | undefined {
+  const root = layout.rootItem;
+  if (!root) return undefined;
+  const stack: ContentItem[] = [root];
+  while (stack.length) {
+    const item = stack.pop()!;
+    if (ContentItem.isComponentItem(item) && item.componentType === type) {
+      return item;
+    }
+    stack.push(...item.contentItems);
+  }
+  return undefined;
+}
+
+function openOrFocusPanel(layout: GoldenLayout, type: string, title: string) {
+  const existing = findComponentByType(layout, type);
+  if (existing) {
+    const parent = existing.parent;
+    if (parent && ContentItem.isStack(parent)) {
+      parent.setActiveComponentItem(existing, true);
+    } else {
+      layout.focusComponent(existing);
+    }
+    return;
+  }
+  layout.addComponent(type, undefined, title);
 }
 
 export function App() {
@@ -114,13 +165,33 @@ export function App() {
           : collectIds(scene).slice(0, 50),
       });
     });
-    onEvent(Event.selectNode, async (uuid) => {
-      await callRpc(Rpc.refreshSceneData);
-      const scene = getState().scene;
-      const match = findByUuid(scene, String(uuid));
-      if (match) {
-        await selectNodeInPanel(match.id);
+    onEvent(Event.inspectHover, (payload: any) => {
+      previewNodeInTree(payload?.id ? String(payload.id) : null);
+    });
+    onEvent(Event.inspectPick, async (payload: any) => {
+      const id = String(payload?.id || "");
+      if (!id) return;
+      // Make the tree visible and show the full hierarchy for this pick.
+      if (layoutRef.current) {
+        openOrFocusPanel(layoutRef.current, "NodeTree", "节点树");
       }
+      const { search, compTypeFilter } = getState();
+      if (search || compTypeFilter.length) {
+        setState({ search: "", compTypeFilter: [] });
+      }
+      if (!findNode(getState().scene, id)) {
+        // Picked a node the last scene push did not include yet.
+        await callRpc(Rpc.refreshSceneData);
+        if (!(await waitForNodeInScene(id))) {
+          message.warning("节点不在当前场景树中");
+          return;
+        }
+      }
+      await selectNodeInPanel(id);
+      locateNodeInTree(id, { flash: true });
+    });
+    onEvent(Event.inspectEnd, () => {
+      setState({ inspecting: false, hoverNodeId: null });
     });
     onEvent(Event.updateTransform, (payload: any) => {
       const d = getState().details;
@@ -190,10 +261,13 @@ export function App() {
       resetProfiler();
       setState({
         injecting: true,
+        // The injected pick session died with the old page.
+        inspecting: false,
         scene: null,
         details: null,
         selectedId: null,
         flashNodeId: null,
+        hoverNodeId: null,
         nodeDc: EMPTY_NODE_DRAW_CALLS,
       });
       bootstrap();
@@ -201,6 +275,27 @@ export function App() {
 
     bootstrap();
   }, [bootstrap]);
+
+  // ESC has to work from the panel too: while the pointer is over the panel,
+  // the page never sees the keystroke.
+  useEffect(() => {
+    if (!inspecting) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      void stopInspect();
+    };
+    // Closing devtools mid-pick would otherwise leave the page swallowing input.
+    const onPageHide = () => {
+      void callRpc(Rpc.inspectStop);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("pagehide", onPageHide);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("pagehide", onPageHide);
+    };
+  }, [inspecting]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -275,14 +370,19 @@ export function App() {
   const onMenu = async ({ key }: { key: string }) => {
     if (key === "inspect") {
       if (inspecting) {
-        await callRpc(Rpc.stopInspectNode);
-        setState({ inspecting: false });
+        await stopInspect();
       } else {
         setState({ inspecting: true });
         try {
-          await callRpc(Rpc.startInspectNode);
-        } finally {
+          const res = (await callRpc(Rpc.inspectStart)) as InspectStartResult | null;
+          if (!res?.ok) {
+            setState({ inspecting: false });
+            message.error(res?.reason || "开启侦测失败");
+          }
+        } catch (err) {
+          console.error(err);
           setState({ inspecting: false });
+          message.error("开启侦测失败");
         }
       }
     } else if (key === "refresh") {
@@ -298,34 +398,36 @@ export function App() {
           hostRef.current.clientHeight,
         );
       }
+    } else {
+      const panel = PANELS.find((p) => p.key === key);
+      if (panel && layoutRef.current) {
+        openOrFocusPanel(layoutRef.current, panel.type, panel.title);
+      }
     }
   };
 
   return (
     <div className="cc-runtime-app">
-      <Menu
-        mode="horizontal"
-        theme="dark"
-        selectable={false}
-        onClick={onMenu}
-        items={[
-          {
-            key: "inspect",
-            icon: inspecting ? <StopOutlined /> : <AimOutlined />,
-            label: inspecting ? "取消侦测" : "侦测节点",
-          },
-          {
-            key: "refresh",
-            icon: <ReloadOutlined />,
-            label: "刷新场景",
-          },
-          {
-            key: "reset",
-            icon: <BorderOuterOutlined />,
-            label: "重置布局",
-          },
-        ]}
-      />
+      <Menu mode="horizontal" theme="dark" selectable={false} onClick={onMenu}>
+        <Menu.Item
+          key="inspect"
+          icon={inspecting ? <StopOutlined /> : <AimOutlined />}
+        >
+          {inspecting ? "取消侦测" : "侦测节点"}
+        </Menu.Item>
+        <Menu.Item key="refresh" icon={<ReloadOutlined />}>
+          刷新场景
+        </Menu.Item>
+        <Menu.SubMenu key="window" title="窗口" popupClassName="cc-menubar-popup">
+          {PANELS.map((p) => (
+            <Menu.Item key={p.key}>{p.title}</Menu.Item>
+          ))}
+          <Menu.Divider />
+          <Menu.Item key="reset" icon={<BorderOuterOutlined />}>
+            重置布局
+          </Menu.Item>
+        </Menu.SubMenu>
+      </Menu>
       <div className="layout-host" ref={hostRef} />
       {injecting && (
         <div className="inject-mask">
@@ -339,12 +441,31 @@ export function App() {
   );
 }
 
-function findByUuid(node: any, uuid: string): any {
-  if (!node) return null;
-  if (node._id === uuid || node.id === uuid) return node;
-  for (const c of node.children || []) {
-    const f = findByUuid(c, uuid);
-    if (f) return f;
+/** Resolve once a scene push contains `id`; false if none does in time. */
+function waitForNodeInScene(id: string, timeoutMs = 1500): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (findNode(getState().scene, id)) {
+      resolve(true);
+      return;
+    }
+    const timer = setTimeout(() => {
+      unsub();
+      resolve(false);
+    }, timeoutMs);
+    const unsub = subscribe(() => {
+      if (!findNode(getState().scene, id)) return;
+      clearTimeout(timer);
+      unsub();
+      resolve(true);
+    });
+  });
+}
+
+async function stopInspect() {
+  setState({ inspecting: false, hoverNodeId: null });
+  try {
+    await callRpc(Rpc.inspectStop);
+  } catch (err) {
+    console.error(err);
   }
-  return null;
 }
