@@ -35,6 +35,8 @@ export const Rpc = {
   inspectStop: "inspect::stop",
   /** Outline a node by panel id, or clear the outline with null. */
   highlightNode: "inspect::highlight",
+  /** Enable/disable select-and-drag on the canvas (boolean). */
+  setMoveEnabled: "move::setEnabled",
   dragDrop: "dragDrop",
   logNode: "logNode",
   log: "log",

@@ -1,5 +1,5 @@
 import { throttle, type DebouncedFunc } from "lodash";
-import { Event } from "../shared/protocol";
+import { Event, Rpc } from "../shared/protocol";
 import { cleanFloat } from "../shared/number";
 import {
   clientToScreen,
@@ -7,16 +7,17 @@ import {
   getRenderCamera,
 } from "./coords";
 import { highlightNode } from "./highlight";
-import { sendEvent } from "./message";
+import { registerHandler, sendEvent } from "./message";
 import { getMutator } from "./mutator";
 import { pickCandidatesAtClient } from "./pick";
 
 declare const cc: any;
 
 /**
- * Select-and-drag: once the panel highlights a node, pointerdown on that node
- * (or a descendant) moves it in local XY only. Events are swallowed only while
- * a drag is active or on the hit that starts one — otherwise the game keeps input.
+ * Select-and-drag: once the panel highlights a node AND drag is enabled,
+ * pointerdown on that node (or a descendant) moves it in local XY only.
+ * Events are swallowed only while a drag is active or on the hit that starts
+ * one — otherwise the game keeps input.
  */
 
 const POINTER_EVENTS = ["pointermove", "pointerdown", "pointerup", "pointercancel"];
@@ -52,6 +53,8 @@ interface DragState {
 
 let moveTarget: any = null;
 let paused = false;
+/** Panel toggle: drag only when the user has enabled it. */
+let enabled = false;
 let dragging: DragState | null = null;
 let attached = false;
 let restoreCursor = "";
@@ -435,7 +438,7 @@ function detachListeners() {
 }
 
 function syncAttachment() {
-  if (moveTarget && moveTarget.isValid !== false && !paused) {
+  if (enabled && moveTarget && moveTarget.isValid !== false && !paused) {
     attachListeners();
   } else {
     endDrag();
@@ -448,6 +451,13 @@ export function setMoveTarget(node: any | null) {
   if (node && node.isValid === false) node = null;
   moveTarget = node;
   if (!node) endDrag();
+  syncAttachment();
+}
+
+/** Panel toggle: when false, selection still outlines but cannot drag. */
+export function setMoveEnabled(value: boolean) {
+  enabled = !!value;
+  if (!enabled) endDrag();
   syncAttachment();
 }
 
@@ -464,5 +474,8 @@ export function setMovePaused(value: boolean) {
 }
 
 export function hookMove() {
-  // Listeners attach lazily via setMoveTarget / setMovePaused.
+  // Listeners attach lazily via setMoveTarget / setMovePaused / setMoveEnabled.
+  registerHandler(Rpc.setMoveEnabled, (value: any) => {
+    setMoveEnabled(!!value);
+  });
 }

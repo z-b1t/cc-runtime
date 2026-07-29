@@ -48,7 +48,7 @@ export async function selectNodeInPanel(id: string, opts?: { flash?: boolean }) 
     expandedKeys: [...expanded],
   });
 
-  // Outline + enable canvas XY drag for this node (ignored while pick mode runs).
+  // Outline this node; canvas XY drag needs the panel "拖动节点" toggle on.
   void callRpc(Rpc.highlightNode, { id }).catch(() => {});
 
   try {

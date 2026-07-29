@@ -10,6 +10,7 @@ import {
 import { Menu, message, Spin } from "antd";
 import {
   AimOutlined,
+  DragOutlined,
   ReloadOutlined,
   BorderOuterOutlined,
   StopOutlined,
@@ -131,10 +132,12 @@ export function App() {
   const layoutRef = useRef<GoldenLayout | null>(null);
   const [injecting, setInjecting] = useState(true);
   const [inspecting, setInspecting] = useState(false);
+  const [moveEnabled, setMoveEnabled] = useState(false);
 
   useEffect(() => subscribe(() => {
     setInjecting(getState().injecting);
     setInspecting(getState().inspecting);
+    setMoveEnabled(getState().moveEnabled);
   }), []);
 
   const bootstrap = useCallback(async () => {
@@ -173,6 +176,10 @@ export function App() {
       await callRpc(Rpc.refreshSceneData);
       const assets = await callRpc(Rpc.assetsGetAll);
       setState({ assets: (assets as any) || {} });
+      // Re-apply drag toggle after inject / page reload.
+      if (getState().moveEnabled) {
+        void callRpc(Rpc.setMoveEnabled, true).catch(() => {});
+      }
     } catch (e) {
       console.error(e);
       message.destroy("inj");
@@ -444,6 +451,16 @@ export function App() {
           message.error("开启侦测失败");
         }
       }
+    } else if (key === "move") {
+      const next = !getState().moveEnabled;
+      setState({ moveEnabled: next });
+      try {
+        await callRpc(Rpc.setMoveEnabled, next);
+      } catch (err) {
+        console.error(err);
+        setState({ moveEnabled: !next });
+        message.error(next ? "开启拖动失败" : "关闭拖动失败");
+      }
     } else if (key === "refresh") {
       await callRpc(Rpc.refreshSceneData);
       message.success("刷新成功");
@@ -473,6 +490,12 @@ export function App() {
           icon={inspecting ? <StopOutlined /> : <AimOutlined />}
         >
           {inspecting ? "取消侦测" : "侦测节点"}
+        </Menu.Item>
+        <Menu.Item
+          key="move"
+          icon={moveEnabled ? <StopOutlined /> : <DragOutlined />}
+        >
+          {moveEnabled ? "取消拖动" : "拖动节点"}
         </Menu.Item>
         <Menu.Item key="refresh" icon={<ReloadOutlined />}>
           刷新场景

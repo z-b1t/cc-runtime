@@ -8,6 +8,8 @@ import {
 export type AppState = {
   injecting: boolean;
   inspecting: boolean;
+  /** When true, the selected node can be dragged on the canvas. */
+  moveEnabled: boolean;
   scene: SceneNodeData | null;
   selectedId: string | null;
   details: NodeDetails | null;
@@ -27,6 +29,7 @@ type Listener = () => void;
 let state: AppState = {
   injecting: true,
   inspecting: false,
+  moveEnabled: false,
   scene: null,
   selectedId: null,
   details: null,
