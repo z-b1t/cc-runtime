@@ -38,6 +38,8 @@ import {
   writeComponentClipboard,
   writeNodeClipboard,
 } from "../clipboard/componentClipboard";
+import { resolveCompIcon, type CocosIconInfo } from "../cocosNodeIcon";
+import { CocosIcon } from "../CocosIcon";
 
 const { Panel } = Collapse;
 
@@ -1306,6 +1308,7 @@ function WidgetInspector({ data, id }: { data: any; id: string }) {
 
 function AttrPanel({
   title,
+  icon,
   activeCheckable,
   active,
   onActiveChange,
@@ -1314,6 +1317,7 @@ function AttrPanel({
   panelKey,
 }: {
   title: string;
+  icon?: CocosIconInfo;
   activeCheckable?: boolean;
   active?: boolean;
   onActiveChange?: (v: boolean) => void;
@@ -1336,6 +1340,7 @@ function AttrPanel({
                     onChange={(e) => onActiveChange?.(e.target.checked)}
                   />
                 )}
+                {icon ? <CocosIcon className="comp-type-icon" icon={icon} /> : null}
                 <span className="attr-panel-title">{title}</span>
               </div>
               {addon}
@@ -1483,6 +1488,7 @@ function ComponentPanel({ comp }: { comp: any }) {
     <AttrPanel
       panelKey={comp.id}
       title={comp.type}
+      icon={resolveCompIcon(comp.type)}
       activeCheckable={typeof comp.enabled === "boolean"}
       active={comp.enabled}
       onActiveChange={async (v) => {
@@ -1730,6 +1736,7 @@ function NodePanel({
     <AttrPanel
       panelKey="node"
       title="Node"
+      icon={resolveCompIcon("node")}
       addon={
         <div
           className="attr-panel-header-actions"

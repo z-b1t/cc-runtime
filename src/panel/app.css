@@ -205,6 +205,23 @@
   white-space: nowrap;
 }
 
+.comp-type-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+}
+
+.comp-type-icon svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+  fill: currentColor;
+}
+
 .attr-panel .export-button {
   color: var(--cc-text-muted) !important;
   opacity: 0.55;
@@ -900,8 +917,10 @@
 
 .panel-body .ant-tree .ant-tree-treenode {
   position: relative;
+  display: flex;
   padding: 0;
   align-items: center;
+  width: 100%;
 }
 
 .panel-body .ant-tree .ant-tree-switcher,
@@ -922,12 +941,60 @@
   margin-right: 2px;
 }
 
+.panel-body .ant-tree .ant-tree-node-content-wrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+.tree-node-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  width: 100%;
+}
+
+.tree-node-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .panel-body .ant-tree .tree-node-icon {
   width: 14px;
   height: 14px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+}
+
+.panel-body .ant-tree .tree-node-icon svg {
+  width: 14px;
+  height: 14px;
   display: block;
-  object-fit: contain;
-  vertical-align: middle;
+  fill: currentColor;
+}
+
+.panel-body .ant-tree .tree-node-ts {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  margin-right: 4px;
+}
+
+.panel-body .ant-tree .tree-node-ts svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+  fill: currentColor;
 }
 
 @keyframes tree-node-flash {

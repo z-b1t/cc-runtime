@@ -14,6 +14,8 @@ import {
 } from "../store";
 import type { NodeDrawCalls, SceneNodeData } from "@shared/protocol";
 import { locateNodeInTree, selectNodeInPanel } from "../selectNode";
+import { hasCustomScript, resolveNodeIcon, typescriptBadgeIcon } from "../cocosNodeIcon";
+import { CocosIcon } from "../CocosIcon";
 
 type DcGutter = {
   /** Colors the gutter; `data-dc` carries the text CSS renders. */
@@ -64,12 +66,17 @@ function toTreeData(
   isRoot = false,
 ): DataNode {
   const { tip, ...gutter } = dcGutter(node, nodeDc, isRoot);
+  const showTs = hasCustomScript(node);
   return {
     ...gutter,
     key: node.id,
     title: (
       <span title={tip} className={titleClass(node, flashNodeId, hoverNodeId)}>
-        {node.name || "<Unnamed>"}
+        <CocosIcon className="tree-node-icon" icon={resolveNodeIcon(node)} />
+        <span className="tree-node-name">{node.name || "<Unnamed>"}</span>
+        {showTs ? (
+          <CocosIcon className="tree-node-ts" icon={typescriptBadgeIcon()} />
+        ) : null}
       </span>
     ),
     disableCheckbox: false,
