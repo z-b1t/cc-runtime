@@ -46,6 +46,16 @@ const syncCompProp = throttle((id: string, key: string, value: unknown) => {
   sendEvent(Event.syncCompProp, { id, key, value });
 }, 100);
 
+function isScene(node: any): boolean {
+  return typeof cc.Scene === "function" && node instanceof cc.Scene;
+}
+
+/** Scene has no `active`; reading it warns in Cocos 3.x. */
+function readActive(node: any): boolean {
+  if (isScene(node)) return true;
+  return !!node.active;
+}
+
 function wrapComp(comp: any, nodeId: string) {
   if (!comp) return undefined;
   if (!comp[symbolMutate]) {
@@ -81,28 +91,36 @@ function walkNode(node: any, parentId: string | null = null): any {
   if (!node[symbolMutate]) {
     const m = (node[symbolMutate] = new Mutator(node));
     nodeMutators[m.id] = m;
-    const desc = Object.getOwnPropertyDescriptor(node, "_active");
-    Object.defineProperty(node, "_active", {
-      configurable: desc.configurable,
-      enumerable: desc.enumerable,
-      get: () => ("value" in desc ? desc.value : desc.get?.call(node)),
-      set: (v) => {
-        if ("value" in desc) {
-          if (v !== desc.value) {
-            desc.value = v;
+    // Scene has no `_active` / `active` — hooking or reading warns in Cocos 3.x.
+    const activeDesc = isScene(node)
+      ? null
+      : Object.getOwnPropertyDescriptor(node, "_active");
+    if (activeDesc) {
+      Object.defineProperty(node, "_active", {
+        configurable: activeDesc.configurable,
+        enumerable: activeDesc.enumerable,
+        get: () =>
+          "value" in activeDesc
+            ? activeDesc.value
+            : activeDesc.get?.call(node),
+        set: (v) => {
+          if ("value" in activeDesc) {
+            if (v !== activeDesc.value) {
+              activeDesc.value = v;
+              syncNodeProp(m.id, "active", v);
+            }
+          } else if (!(activeDesc.get && v === activeDesc.get.call(node))) {
+            activeDesc.set?.call(node, v);
             syncNodeProp(m.id, "active", v);
           }
-        } else if (!(desc.get && v === desc.get.call(node))) {
-          desc.set?.call(node, v);
-          syncNodeProp(m.id, "active", v);
-        }
-      },
-    });
+        },
+      });
+    }
     node.on(cc.Node.EventType.CHILD_ADDED, pushScene);
     node.on(cc.Node.EventType.CHILD_REMOVED, pushScene);
     node.on(cc.Node.EventType.SIBLING_ORDER_CHANGED, pushScene);
     node.once(cc.Node.EventType.NODE_DESTROYED, () => {
-      Object.defineProperty(node, "_active", desc);
+      if (activeDesc) Object.defineProperty(node, "_active", activeDesc);
       delete node[symbolMutate];
       delete nodeMutators[m.id];
       m.destroy();
@@ -113,7 +131,7 @@ function walkNode(node: any, parentId: string | null = null): any {
     id: m.id,
     _id: node._id,
     name: node.name,
-    active: node.active,
+    active: readActive(node),
     parentId,
     children: (node.children || []).map((c: any) => walkNode(c, m.id)),
     components: node.components?.map((c: any) => wrapComp(c, m.id)) || [],
@@ -178,7 +196,7 @@ export function hookScene() {
     if (!target) return null;
 
     let node: any = null;
-    if (typeof cc.Scene === "function" && target instanceof cc.Scene) {
+    if (isScene(target)) {
       node = target;
     } else if (target instanceof cc.Node) {
       node = target;
@@ -247,11 +265,11 @@ export function hookScene() {
         : { x: 0, y: 0, z: 0 };
 
     // Scene extends Node in Cocos 3 — handle scene globals first.
-    if (typeof cc.Scene === "function" && target instanceof cc.Scene) {
+    if (isScene(target)) {
       return {
         id,
         name: target.name,
-        active: target.active,
+        active: true,
         components:
           Object.values(target.globals || {})
             .map((g: any) => {
@@ -278,7 +296,7 @@ export function hookScene() {
       const details = {
         id,
         name: target.name,
-        active: !!target.active,
+        active: readActive(target),
         nodeAttrs: {
           position: vec3(target.position),
           eulerAngles: vec3(target.eulerAngles),
