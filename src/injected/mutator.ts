@@ -6,6 +6,13 @@ declare const cc: any;
 export const symbolMutate = Symbol("cc-runtime Mutate");
 const mutatorMap: Record<string, Mutator> = {};
 
+/** Resolve dotted ctor paths like "cc.Color" without eval (page globals). */
+function resolveCtor(cls: string): any {
+  return String(cls)
+    .split(".")
+    .reduce((obj: any, key) => (obj == null ? undefined : obj[key]), globalThis as any);
+}
+
 export function getMutator(target: any): Mutator | null {
   return (target && target[symbolMutate]) || null;
 }
@@ -89,8 +96,7 @@ export class Mutator {
         if (isObject && NEW_KEY in value) {
           try {
             const { cls, args } = value[NEW_KEY];
-            // eslint-disable-next-line no-eval
-            const Cls = eval(cls);
+            const Cls = resolveCtor(cls);
             value = new Cls(...args);
           } catch {
             /* ignore construct errors */
@@ -116,8 +122,7 @@ export class Mutator {
           if (isObject && NEW_KEY in arg) {
             try {
               const { cls, args: cargs } = arg[NEW_KEY];
-              // eslint-disable-next-line no-eval
-              const Cls = eval(cls);
+              const Cls = resolveCtor(cls);
               return new Cls(...cargs);
             } catch {
               return arg;

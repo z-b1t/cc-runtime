@@ -974,6 +974,12 @@
   width: 100%;
 }
 
+/* Child row starts at the end of the parent's node icon:
+   indent = switcher (24) + tree-node-icon (14). */
+.panel-body .ant-tree .ant-tree-indent-unit {
+  width: 16px;
+}
+
 .panel-body .ant-tree .ant-tree-treenode-selected {
   background: #555;
 }
@@ -1003,6 +1009,20 @@
   line-height: 20px;
 }
 
+/* Tighten caret → icon gap to 2px (antd switcher is 24px with centered 10px caret). */
+.panel-body .ant-tree .ant-tree-switcher {
+  width: 12px;
+  margin-right: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.panel-body .ant-tree .ant-tree-switcher .ant-tree-switcher-icon {
+  font-size: 10px;
+  line-height: 1;
+}
+
 .panel-body .ant-tree .ant-tree-iconEle {
   width: 16px;
   height: 20px;
@@ -1013,6 +1033,7 @@
 .panel-body .ant-tree .ant-tree-node-content-wrapper {
   flex: 1;
   min-width: 0;
+  padding: 0 4px 0 0;
 }
 
 .tree-node-title {
@@ -1029,11 +1050,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 12px;
+  line-height: 16px;
 }
 
 .panel-body .ant-tree .tree-node-icon {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -1042,8 +1065,8 @@
 }
 
 .panel-body .ant-tree .tree-node-icon svg {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   display: block;
   fill: currentColor;
 }
