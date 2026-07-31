@@ -25,6 +25,8 @@ export const Msg = {
   launcherHide: "cc-runtime::launcherHide",
   /** Background → content: show page launcher again after side panel closes. */
   launcherShow: "cc-runtime::launcherShow",
+  /** Side panel → background → DevTools page: open a URL in Sources. */
+  openInSources: "cc-runtime::openInSources",
 } as const;
 
 export const Rpc = {
@@ -57,7 +59,37 @@ export const Rpc = {
   profilerStart: "profiler::start",
   /** Unhook director frame events and reset counters. */
   profilerStop: "profiler::stop",
+  /** Resolve a component's script URL for Sources. */
+  resolveComponentSource: "resolveComponentSource",
+  /** Resolve a Button/EventHandler binding's script URL (+ search text). */
+  resolveHandlerSource: "resolveHandlerSource",
 } as const;
+
+/** Payload for Msg.openInSources (side panel → background → DevTools). */
+export interface OpenInSourcesPayload {
+  tabId: number;
+  url?: string;
+  line?: number;
+  column?: number;
+  /** If set and line is missing, DevTools page searches resource content. */
+  searchText?: string;
+  className?: string;
+  hasFn?: boolean;
+}
+
+/** Result of resolveComponentSource / resolveHandlerSource. */
+export interface SourceLocation {
+  /** Best-effort script URL; may be missing — DevTools will search resources. */
+  url?: string;
+  line?: number;
+  column?: number;
+  /** Method or class name to search inside Sources resources. */
+  searchText?: string;
+  /** Component __classname__ used to narrow resource search. */
+  className?: string;
+  /** Live function was stashed for console.log fallback. */
+  hasFn?: boolean;
+}
 
 export interface ComponentClipboardPayload {
   cid: string;

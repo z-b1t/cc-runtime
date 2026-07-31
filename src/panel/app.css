@@ -422,6 +422,26 @@
   width: 100%;
 }
 
+.handler-field-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.handler-field-row .attr-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.handler-field-row .handler-jump-btn {
+  flex: none;
+  color: var(--cc-text-muted);
+  width: 22px;
+  height: 22px;
+  padding: 0;
+}
+
 /* Flat text / number inputs */
 .node-details .ant-input,
 .node-details .ant-input-number {

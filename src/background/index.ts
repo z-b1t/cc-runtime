@@ -11,6 +11,8 @@ void chrome.sidePanel.setOptions({
 
 /** tabId → live side-panel port (disconnect = panel closed). */
 const panelPorts = new Map<number, chrome.runtime.Port>();
+/** tabId → DevTools bridge port (disconnect = DevTools closed). */
+const devtoolsPorts = new Map<number, chrome.runtime.Port>();
 /** tabId → safety timer if panel never binds after open. */
 const pendingOpenTimers = new Map<number, ReturnType<typeof setTimeout>>();
 
@@ -60,6 +62,24 @@ function onPanelClosed(tabId: number) {
 }
 
 chrome.runtime.onConnect.addListener((port) => {
+  if (port.name === "cc-runtime-devtools") {
+    let boundTabId: number | undefined;
+    port.onMessage.addListener((msg) => {
+      if ((msg as { type?: string })?.type !== "bind") return;
+      const id = (msg as { tabId?: number }).tabId;
+      if (typeof id !== "number") return;
+      boundTabId = id;
+      devtoolsPorts.set(id, port);
+    });
+    port.onDisconnect.addListener(() => {
+      if (boundTabId == null) return;
+      if (devtoolsPorts.get(boundTabId) === port) {
+        devtoolsPorts.delete(boundTabId);
+      }
+    });
+    return;
+  }
+
   if (port.name !== "cc-runtime-side-panel") return;
 
   let boundTabId: number | undefined;
@@ -88,6 +108,29 @@ chrome.runtime.onConnect.addListener((port) => {
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   const type = (msg as { type?: string })?.type;
+
+  if (type === Msg.openInSources) {
+    const tabId = (msg as { tabId?: number }).tabId;
+    if (typeof tabId !== "number") {
+      sendResponse({ ok: false, reason: "missing tabId" });
+      return;
+    }
+    const dt = devtoolsPorts.get(tabId);
+    if (!dt) {
+      sendResponse({ ok: false, reason: "devtools-closed" });
+      return;
+    }
+    try {
+      dt.postMessage(msg);
+      sendResponse({ ok: true });
+    } catch (err) {
+      sendResponse({
+        ok: false,
+        reason: err instanceof Error ? err.message : "forward-failed",
+      });
+    }
+    return;
+  }
 
   if (type === Msg.probeCc) {
     const tabId = sender.tab?.id;

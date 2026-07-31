@@ -21,6 +21,7 @@
   "background": {
     "service_worker": "background.js"
   },
+  "devtools_page": "devtools.html",
   "web_accessible_resources": [
     {
       "matches": ["<all_urls>"],

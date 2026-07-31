@@ -18,8 +18,10 @@ import {
   LockOutlined,
   UnlockOutlined,
   MoreOutlined,
+  CodeOutlined,
 } from "@ant-design/icons";
 import { callRpc, Rpc } from "../bridge/rpc";
+import { canLocate, openInSources } from "../bridge/openInSources";
 import { getState, setState, subscribe, type AppState } from "../store";
 import { selectNodeInPanel } from "../selectNode";
 import {
@@ -27,6 +29,7 @@ import {
   VISITOR_KEY,
   type ComponentClipboardPayload,
   type NodeClipboardPayload,
+  type SourceLocation,
 } from "@shared/protocol";
 import { cleanFloat, formatFloatDisplay } from "@shared/number";
 import { ColorAttrField, packAbgr } from "./ColorPicker";
@@ -330,21 +333,47 @@ function EventHandlerItem({
         />
       </AttrLine>
       <AttrLine title="Handler">
-        <Select
-          className="attr-select"
-          size="small"
-          value={handler || undefined}
-          placeholder="None"
-          options={handlerOpts}
-          showSearch
-          allowClear
-          optionFilterProp="label"
-          onChange={async (v) => {
-            const next = v || "";
-            setHandler(next);
-            await commitField("handler", next);
-          }}
-        />
+        <div className="handler-field-row">
+          <Select
+            className="attr-select"
+            size="small"
+            value={handler || undefined}
+            placeholder="None"
+            options={handlerOpts}
+            showSearch
+            allowClear
+            optionFilterProp="label"
+            onChange={async (v) => {
+              const next = v || "";
+              setHandler(next);
+              await commitField("handler", next);
+            }}
+          />
+          <Tooltip title="跳转到绑定函数">
+            <Button
+              type="text"
+              size="small"
+              className="handler-jump-btn"
+              icon={<CodeOutlined />}
+              disabled={!handler || !component || !targetVisitorId}
+              onClick={async () => {
+                const loc = (await callRpc(
+                  Rpc.resolveHandlerSource,
+                  {
+                    targetVisitorId,
+                    component,
+                    handler,
+                  },
+                )) as SourceLocation | null;
+                if (!canLocate(loc)) {
+                  message.warning("无法解析绑定函数位置");
+                  return;
+                }
+                await openInSources(loc!);
+              }}
+            />
+          </Tooltip>
+        </div>
       </AttrLine>
       <AttrLine title="CustomEventData">
         <Input
@@ -1359,11 +1388,24 @@ function ComponentPanel({ comp }: { comp: any }) {
     () => getMemoryComponentClipboard(),
   );
   const [menuEpoch, setMenuEpoch] = useState(0);
+  const [canOpenSource, setCanOpenSource] = useState(false);
 
   const log = async (e: React.MouseEvent) => {
     e.stopPropagation();
     await callRpc(Rpc.log, { datas: [comp], level: "log" });
     message.success("已输出至控制台");
+  };
+
+  const onOpenInSource = async () => {
+    const loc = (await callRpc(
+      Rpc.resolveComponentSource,
+      comp.id,
+    )) as SourceLocation | null;
+    if (!canLocate(loc)) {
+      message.warning("无法解析脚本位置");
+      return;
+    }
+    await openInSources(loc!);
   };
 
   const refreshDetails = async () => {
@@ -1526,6 +1568,11 @@ function ComponentPanel({ comp }: { comp: any }) {
                 (await readComponentClipboard()) ||
                 getMemoryComponentClipboard();
               setClip(latest);
+              const loc = (await callRpc(
+                Rpc.resolveComponentSource,
+                comp.id,
+              )) as SourceLocation | null;
+              setCanOpenSource(canLocate(loc));
               setMenuEpoch((n) => n + 1);
             }}
             overlay={
@@ -1533,11 +1580,16 @@ function ComponentPanel({ comp }: { comp: any }) {
                 key={menuEpoch}
                 onClick={({ key, domEvent }) => {
                   domEvent.stopPropagation();
-                  if (key === "copy") void onCopyComponent();
+                  if (key === "open-source") void onOpenInSource();
+                  else if (key === "copy") void onCopyComponent();
                   else if (key === "paste-values") void onPasteValues();
                   else if (key === "paste-new") void onPasteAsNew();
                 }}
               >
+                <Menu.Item key="open-source" disabled={!canOpenSource}>
+                  在 Source 面板打开
+                </Menu.Item>
+                <Menu.Divider />
                 <Menu.Item key="copy">复制组件</Menu.Item>
                 <Menu.Item key="paste-values" disabled={!canPasteValues}>
                   粘贴组件的值
