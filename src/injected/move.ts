@@ -15,7 +15,8 @@ declare const cc: any;
 
 /**
  * Select-and-drag: once the panel highlights a node AND drag is enabled,
- * pointerdown on that node (or a descendant) moves it in local XY only.
+ * pointerdown over that node (or a descendant) moves it in local XY only.
+ * Occluders in front are ignored — any hit under the selected target counts.
  * Events are swallowed only while a drag is active or on the hit that starts
  * one — otherwise the game keeps input.
  */
@@ -402,9 +403,10 @@ function onPointerEvent(e: globalThis.Event) {
   }
 
   if (DOWN_TYPES.has(e.type)) {
+    // Use any hit under the selected target, not only the front-most, so a
+    // covered/selected node can still be dragged once outlined.
     const hits = pickCandidatesAtClient(at.x, at.y, { renderableOnly: true });
-    const front = hits[0];
-    if (front && isUnderTarget(front, moveTarget)) {
+    if (hits.some((n) => isUnderTarget(n, moveTarget))) {
       if (startDrag(moveTarget, at.x, at.y)) swallow(e);
     }
   }
