@@ -926,6 +926,10 @@
   padding: 0 4px;
 }
 
+.tree-node-title.is-inactive {
+  opacity: 0.45;
+}
+
 /* Pick-mode preview. Blue matches the outline drawn over the game, and stays
    clearly apart from the orange flash and antd's own selected row. */
 .tree-node-title.is-hovered {
@@ -944,14 +948,9 @@
 }
 
 .panel-body .ant-tree .ant-tree-switcher,
-.panel-body .ant-tree .ant-tree-checkbox + span,
 .panel-body .ant-tree .ant-tree-node-content-wrapper {
   min-height: 20px;
   line-height: 20px;
-}
-
-.panel-body .ant-tree .ant-tree-checkbox {
-  margin: 2px 6px 0 0;
 }
 
 .panel-body .ant-tree .ant-tree-iconEle {

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, Input, Select, Space, Tree } from "antd";
-import type { DataNode, EventDataNode } from "antd/es/tree";
+import type { DataNode } from "antd/es/tree";
 import { callRpc, Rpc } from "../bridge/rpc";
 import {
   collectCompTypes,
@@ -53,6 +53,7 @@ function titleClass(
   hoverNodeId: string | null,
 ): string {
   const classes = ["tree-node-title"];
+  if (!node.active) classes.push("is-inactive");
   if (flashNodeId === node.id) classes.push("is-flashing");
   if (hoverNodeId === node.id) classes.push("is-hovered");
   return classes.join(" ");
@@ -79,18 +80,37 @@ function toTreeData(
         ) : null}
       </span>
     ),
-    disableCheckbox: false,
     children: (node.children || []).map((c) =>
       toTreeData(c, flashNodeId, hoverNodeId, nodeDc),
     ),
   };
 }
 
-function collectChecked(node: SceneNodeData | null, out: string[] = []): string[] {
-  if (!node) return out;
-  if (node.active) out.push(node.id);
-  node.children?.forEach((c) => collectChecked(c, out));
-  return out;
+async function setNodeActive(id: string, active: boolean) {
+  await callRpc(`mutatorSet-${id}`, {
+    name: "active",
+    value: active,
+  });
+  const scene = getState().scene;
+  const n = findNode(scene, id);
+  if (n) {
+    n.active = active;
+    setState({ scene: { ...scene! } });
+  }
+  const details = getState().details;
+  if (details?.id === id) {
+    setState({ details: { ...details, active } });
+  }
+}
+
+function isTypingTarget(t: EventTarget | null): boolean {
+  if (!(t instanceof HTMLElement)) return false;
+  return (
+    t.tagName === "INPUT" ||
+    t.tagName === "TEXTAREA" ||
+    t.tagName === "SELECT" ||
+    t.isContentEditable
+  );
 }
 
 export function NodeTree() {
@@ -131,11 +151,6 @@ export function NodeTree() {
     [snap.scene],
   );
 
-  const checkedKeys = useMemo(
-    () => collectChecked(snap.scene),
-    [snap.scene],
-  );
-
   const onSelect = useCallback(async (keys: React.Key[]) => {
     const id = String(keys[0] || "");
     if (!id) return;
@@ -151,29 +166,22 @@ export function NodeTree() {
     }
   }, []);
 
-  const onCheck = useCallback(
-    async (
-      _checked: any,
-      info: { node: EventDataNode; checked: boolean },
-    ) => {
-      const id = String(info.node.key);
-      await callRpc(`mutatorSet-${id}`, {
-        name: "active",
-        value: info.checked,
-      });
-      const scene = getState().scene;
-      const n = findNode(scene, id);
-      if (n) {
-        n.active = info.checked;
-        setState({ scene: { ...scene! } });
-      }
-      const details = getState().details;
-      if (details?.id === id) {
-        setState({ details: { ...details, active: info.checked } });
-      }
-    },
-    [],
-  );
+  // Q toggles the selected node's active flag (replaces the per-row checkbox).
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "q" && e.key !== "Q") return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (isTypingTarget(e.target)) return;
+      const id = getState().selectedId;
+      if (!id) return;
+      const node = findNode(getState().scene, id);
+      if (!node) return;
+      e.preventDefault();
+      void setNodeActive(id, !node.active);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   const onDrop = useCallback(async (info: any) => {
     const dragId = String(info.dragNode.key);
@@ -252,18 +260,14 @@ export function NodeTree() {
       <Tree
         // The gutter only earns its width once the profiler reports draw calls.
         className={snap.nodeDc.total > 0 ? "tree-dc-gutter" : undefined}
-        checkable
-        checkStrictly
         draggable={{ icon: false }}
         blockNode
         allowDrop={() => true}
         treeData={treeData}
-        checkedKeys={{ checked: checkedKeys, halfChecked: [] }}
         selectedKeys={snap.selectedId ? [snap.selectedId] : []}
         expandedKeys={snap.expandedKeys}
         onExpand={(keys) => setState({ expandedKeys: keys.map(String) })}
         onSelect={onSelect}
-        onCheck={onCheck as any}
         onDrop={onDrop}
       />
     </div>
