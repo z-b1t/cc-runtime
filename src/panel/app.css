@@ -164,12 +164,12 @@
 }
 
 .attr-panel .ant-collapse > .ant-collapse-item > .ant-collapse-header {
-  padding: 4px 8px !important;
+  padding: 3px 8px !important;
   align-items: center !important;
   color: var(--cc-text) !important;
   line-height: var(--cc-row) !important;
   background: #3a3a3a;
-  min-height: 28px;
+  min-height: 26px;
 }
 
 .attr-panel .ant-collapse-content {
@@ -195,6 +195,44 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
+}
+
+/* Checkbox — compact 14px, #2a2a2a box (same as component header toggle). */
+.node-details .ant-checkbox-wrapper {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  height: 14px;
+  margin: 0;
+}
+
+.node-details .ant-checkbox {
+  top: 0;
+  width: 14px;
+  height: 14px;
+}
+
+.node-details .ant-checkbox-inner {
+  width: 14px;
+  height: 14px;
+  background: #1b1b1b;
+  border-color: #1b1b1b;
+}
+
+.node-details .ant-checkbox + span {
+  padding: 0;
+}
+
+.node-details .ant-checkbox-checked .ant-checkbox-inner {
+  background: #1b1b1b;
+  border-color: #1b1b1b;
+}
+
+.node-details .ant-checkbox-checked .ant-checkbox-inner::after {
+  width: 5px;
+  height: 8px;
+  border-color: #fff;
+  left: 21.5%;
 }
 
 .attr-panel-title {
@@ -484,16 +522,6 @@
 .node-details .ant-select-focused .ant-select-arrow,
 .node-details .ant-select:hover .ant-select-arrow {
   color: var(--cc-accent);
-}
-
-.node-details .ant-checkbox-inner {
-  background: var(--cc-bg-input);
-  border-color: var(--cc-border-soft);
-}
-
-.node-details .ant-checkbox-checked .ant-checkbox-inner {
-  background: var(--cc-accent);
-  border-color: var(--cc-accent);
 }
 
 /* Color — Cocos Creator style picker */
@@ -931,12 +959,11 @@
 }
 
 /* Pick-mode preview. Blue matches the outline drawn over the game, and stays
-   clearly apart from the orange flash and antd's own selected row. */
-.tree-node-title.is-hovered {
+   clearly apart from the orange flash and antd's own selected row. Full-row
+   width matches the gray selection highlight. */
+.panel-body .ant-tree .ant-tree-treenode.is-hovered {
   background: rgba(74, 163, 255, 0.22);
   box-shadow: inset 0 0 0 1px #4aa3ff;
-  border-radius: 2px;
-  padding: 0 4px;
 }
 
 .panel-body .ant-tree .ant-tree-treenode {
@@ -945,6 +972,29 @@
   padding: 0;
   align-items: center;
   width: 100%;
+}
+
+.panel-body .ant-tree .ant-tree-treenode-selected {
+  background: #555;
+}
+
+/* Full-row mouse hover (replaces antd's content-wrapper-only hover). */
+.panel-body .ant-tree .ant-tree-treenode:hover {
+  background: #404040;
+}
+
+.panel-body .ant-tree .ant-tree-treenode-selected:hover {
+  background: #555;
+}
+
+.panel-body .ant-tree .ant-tree-treenode.is-hovered:hover {
+  background: rgba(74, 163, 255, 0.22);
+}
+
+.panel-body .ant-tree .ant-tree-node-content-wrapper:hover,
+.panel-body .ant-tree .ant-tree-node-content-wrapper.ant-tree-node-selected,
+.panel-body .ant-tree .ant-tree-node-selected .ant-tree-node-content-wrapper {
+  background: transparent !important;
 }
 
 .panel-body .ant-tree .ant-tree-switcher,

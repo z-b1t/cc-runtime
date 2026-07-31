@@ -4,7 +4,6 @@ import type { DataNode } from "antd/es/tree";
 import { callRpc, Rpc } from "../bridge/rpc";
 import {
   collectCompTypes,
-  collectIds,
   collectMatchingNodes,
   findNode,
   getState,
@@ -50,12 +49,10 @@ function dcGutter(
 function titleClass(
   node: SceneNodeData,
   flashNodeId: string | null,
-  hoverNodeId: string | null,
 ): string {
   const classes = ["tree-node-title"];
   if (!node.active) classes.push("is-inactive");
   if (flashNodeId === node.id) classes.push("is-flashing");
-  if (hoverNodeId === node.id) classes.push("is-hovered");
   return classes.join(" ");
 }
 
@@ -68,11 +65,15 @@ function toTreeData(
 ): DataNode {
   const { tip, ...gutter } = dcGutter(node, nodeDc, isRoot);
   const showTs = hasCustomScript(node);
+  const rowClass = [gutter.className, hoverNodeId === node.id ? "is-hovered" : null]
+    .filter(Boolean)
+    .join(" ");
   return {
     ...gutter,
+    className: rowClass || undefined,
     key: node.id,
     title: (
-      <span title={tip} className={titleClass(node, flashNodeId, hoverNodeId)}>
+      <span title={tip} className={titleClass(node, flashNodeId)}>
         <CocosIcon className="tree-node-icon" icon={resolveNodeIcon(node)} />
         <span className="tree-node-name">{node.name || "<Unnamed>"}</span>
         {showTs ? (
@@ -207,10 +208,15 @@ export function NodeTree() {
     await callRpc(Rpc.refreshSceneData);
   }, []);
 
-  const expandAll = () => {
-    setState({ expandedKeys: collectIds(snap.scene) });
+  const isExpanded = snap.expandedKeys.length > 0;
+  const toggleExpand = () => {
+    if (isExpanded) {
+      setState({ expandedKeys: [] });
+      return;
+    }
+    // Expand one level: only the scene root, so its direct children show.
+    setState({ expandedKeys: snap.scene ? [snap.scene.id] : [] });
   };
-  const collapseAll = () => setState({ expandedKeys: [] });
 
   return (
     <div className="panel-body">
@@ -250,11 +256,8 @@ export function NodeTree() {
           style={{ minWidth: 200, maxWidth: 280 }}
           size="small"
         />
-        <Button size="small" onClick={expandAll}>
-          全部展开
-        </Button>
-        <Button size="small" onClick={collapseAll}>
-          全部折叠
+        <Button size="small" onClick={toggleExpand}>
+          {isExpanded ? "全部折叠" : "展开一层"}
         </Button>
       </Space>
       <Tree
