@@ -4,6 +4,7 @@ import type { DataNode } from "antd/es/tree";
 import { callRpc, Rpc } from "../bridge/rpc";
 import {
   collectCompTypes,
+  collectIds,
   collectMatchingNodes,
   findNode,
   getState,
@@ -114,6 +115,20 @@ function isTypingTarget(t: EventTarget | null): boolean {
   );
 }
 
+/** Alt+click: recursively expand or collapse this node's subtree. */
+function toggleSubtree(id: string) {
+  const node = findNode(getState().scene, id);
+  if (!node?.children?.length) return;
+  const ids = collectIds(node);
+  const expanded = new Set(getState().expandedKeys);
+  if (expanded.has(id)) {
+    for (const k of ids) expanded.delete(k);
+  } else {
+    for (const k of ids) expanded.add(k);
+  }
+  setState({ expandedKeys: [...expanded] });
+}
+
 export function NodeTree() {
   const [snap, setSnap] = useState<AppState>(getState());
   useEffect(() => {
@@ -152,7 +167,11 @@ export function NodeTree() {
     [snap.scene],
   );
 
-  const onSelect = useCallback(async (keys: React.Key[]) => {
+  const onSelect = useCallback(async (keys: React.Key[], info?: any) => {
+    if (info?.nativeEvent?.altKey) {
+      toggleSubtree(String(info.node?.key || keys[0] || ""));
+      return;
+    }
     const id = String(keys[0] || "");
     if (!id) return;
     await selectNodeInPanel(id, { flash: false });
@@ -269,7 +288,13 @@ export function NodeTree() {
         treeData={treeData}
         selectedKeys={snap.selectedId ? [snap.selectedId] : []}
         expandedKeys={snap.expandedKeys}
-        onExpand={(keys) => setState({ expandedKeys: keys.map(String) })}
+        onExpand={(keys, info) => {
+          if (info?.nativeEvent?.altKey) {
+            toggleSubtree(String(info.node.key));
+            return;
+          }
+          setState({ expandedKeys: keys.map(String) });
+        }}
         onSelect={onSelect}
         onDrop={onDrop}
       />

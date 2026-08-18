@@ -32,7 +32,7 @@ import {
   setInspectedTabId,
   waitForEvent,
 } from "./bridge/rpc";
-import { collectIds, findNode, getState, setState, subscribe } from "./store";
+import { findNode, getState, setState, subscribe } from "./store";
 import { pushSample, resetProfiler } from "./profilerStore";
 import {
   locateNodeInTree,
@@ -194,10 +194,14 @@ export function App() {
       const { scene: prevScene, expandedKeys } = getState();
       setState({
         scene,
-        // First load only: seed default expands. Keep [] after "collapse all".
-        expandedKeys: prevScene
-          ? expandedKeys
-          : collectIds(scene).slice(0, 50),
+        // New scene: expand the root so its children show. Same scene
+        // (child add/remove) keeps the user's expand / "collapse all" state.
+        expandedKeys:
+          !prevScene || prevScene.id !== scene?.id
+            ? scene?.id
+              ? [scene.id]
+              : []
+            : expandedKeys,
       });
     });
     onEvent(Event.inspectHover, (payload: any) => {
