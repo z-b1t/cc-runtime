@@ -139,6 +139,13 @@ function walkNode(node: any, parentId: string | null = null): any {
 }
 
 let stopDetails: (() => void) | null = null;
+let detailsWatchId: string | null = null;
+
+function clearDetailsWatch() {
+  stopDetails?.();
+  stopDetails = null;
+  detailsWatchId = null;
+}
 
 export function hookScene() {
   hookCompClipboard(nodeMutators);
@@ -253,7 +260,10 @@ export function hookScene() {
 
   registerHandler(Rpc.getNodeDetails, (id: any) => {
     const target = nodeMutators[id]?.target;
-    if (!target) return null;
+    if (!target) {
+      clearDetailsWatch();
+      return null;
+    }
 
     const vec3 = (v: any) =>
       v && typeof v === "object"
@@ -266,6 +276,7 @@ export function hookScene() {
 
     // Scene extends Node in Cocos 3 — handle scene globals first.
     if (isScene(target)) {
+      clearDetailsWatch();
       return {
         id,
         name: target.name,
@@ -311,53 +322,57 @@ export function hookScene() {
           })
           .filter(Boolean),
       };
-      stopDetails?.();
-      const onTransform = throttle(() => {
-        sendEvent(Event.updateTransform, {
-          id,
-          position: vec3(target.position),
-          eulerAngles: vec3(target.eulerAngles),
-          scale: vec3(target.scale),
-        });
-      }, 1000);
-      const onLayer = throttle(() => {
-        sendEvent(Event.updateLayer, { id, layer: target.layer });
-      }, 1000);
-      const onSize = throttle(() => {
-        const ui = target._uiProps?.uiTransformComp;
-        if (ui) {
-          const cs = ui.contentSize;
-          sendEvent(Event.updateContentSize, {
+      if (detailsWatchId !== id) {
+        stopDetails?.();
+        const onTransform = throttle(() => {
+          sendEvent(Event.updateTransform, {
             id,
-            contentSize: cs
-              ? { width: cs.width, height: cs.height }
-              : undefined,
+            position: vec3(target.position),
+            eulerAngles: vec3(target.eulerAngles),
+            scale: vec3(target.scale),
           });
-        }
-      }, 1000);
-      const onAnchor = throttle(() => {
-        const ui = target._uiProps?.uiTransformComp;
-        if (ui) {
-          const ap = ui.anchorPoint;
-          sendEvent(Event.updateAnchorPoint, {
-            id,
-            anchorPoint: ap ? { x: ap.x, y: ap.y } : undefined,
-          });
-        }
-      }, 1000);
-      target.on(cc.Node.EventType.TRANSFORM_CHANGED, onTransform);
-      target.on(cc.Node.EventType.LAYER_CHANGED, onLayer);
-      target.on(cc.Node.EventType.SIZE_CHANGED, onSize);
-      target.on(cc.Node.EventType.ANCHOR_CHANGED, onAnchor);
-      stopDetails = () => {
-        if (!target.isValid) return;
-        target.off(cc.Node.EventType.TRANSFORM_CHANGED, onTransform);
-        target.off(cc.Node.EventType.LAYER_CHANGED, onLayer);
-        target.off(cc.Node.EventType.SIZE_CHANGED, onSize);
-        target.off(cc.Node.EventType.ANCHOR_CHANGED, onAnchor);
-      };
+        }, 1000);
+        const onLayer = throttle(() => {
+          sendEvent(Event.updateLayer, { id, layer: target.layer });
+        }, 1000);
+        const onSize = throttle(() => {
+          const ui = target._uiProps?.uiTransformComp;
+          if (ui) {
+            const cs = ui.contentSize;
+            sendEvent(Event.updateContentSize, {
+              id,
+              contentSize: cs
+                ? { width: cs.width, height: cs.height }
+                : undefined,
+            });
+          }
+        }, 1000);
+        const onAnchor = throttle(() => {
+          const ui = target._uiProps?.uiTransformComp;
+          if (ui) {
+            const ap = ui.anchorPoint;
+            sendEvent(Event.updateAnchorPoint, {
+              id,
+              anchorPoint: ap ? { x: ap.x, y: ap.y } : undefined,
+            });
+          }
+        }, 1000);
+        target.on(cc.Node.EventType.TRANSFORM_CHANGED, onTransform);
+        target.on(cc.Node.EventType.LAYER_CHANGED, onLayer);
+        target.on(cc.Node.EventType.SIZE_CHANGED, onSize);
+        target.on(cc.Node.EventType.ANCHOR_CHANGED, onAnchor);
+        detailsWatchId = id;
+        stopDetails = () => {
+          if (!target.isValid) return;
+          target.off(cc.Node.EventType.TRANSFORM_CHANGED, onTransform);
+          target.off(cc.Node.EventType.LAYER_CHANGED, onLayer);
+          target.off(cc.Node.EventType.SIZE_CHANGED, onSize);
+          target.off(cc.Node.EventType.ANCHOR_CHANGED, onAnchor);
+        };
+      }
       return details;
     }
+    clearDetailsWatch();
     return null;
   });
 }

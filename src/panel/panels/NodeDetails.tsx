@@ -72,11 +72,27 @@ function axisLabel(key: string) {
   return capitalize(key);
 }
 
+const DETAILS_POLL_MS = 500;
+
 async function refreshNodeDetails() {
-  const id = getState().details?.id;
+  const id = getState().selectedId;
   if (!id) return;
   const details = await callRpc(Rpc.getNodeDetails, id);
-  if (details) setState({ details });
+  if (getState().selectedId !== id) return;
+  if (!details) return;
+  const prev = getState().details;
+  if (prev && JSON.stringify(prev) === JSON.stringify(details)) return;
+  setState({ details });
+}
+
+function isEditingNodeDetails(): boolean {
+  const root = document.querySelector(".node-details");
+  if (!root) return false;
+  if (root.querySelector(".ant-select-open")) return true;
+  const el = document.activeElement;
+  if (!el || !(el instanceof HTMLElement) || !root.contains(el)) return false;
+  const tag = el.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || el.isContentEditable;
 }
 
 function capitalize(name: string) {
@@ -1847,6 +1863,22 @@ function NodePanel({
 export function NodeDetails() {
   const [snap, setSnap] = useState<AppState>(getState());
   useEffect(() => subscribe(() => setSnap({ ...getState() })), []);
+
+  useEffect(() => {
+    const id = snap.selectedId;
+    if (!id) return;
+    let inflight = false;
+    const tick = () => {
+      if (inflight || isEditingNodeDetails()) return;
+      inflight = true;
+      void refreshNodeDetails().finally(() => {
+        inflight = false;
+      });
+    };
+    const timer = window.setInterval(tick, DETAILS_POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [snap.selectedId]);
+
   const d = snap.details;
 
   if (!d) {
