@@ -19,6 +19,7 @@ import {
   EMPTY_NODE_DRAW_CALLS,
   LAYOUT_STORAGE_KEY,
   Msg,
+  type EcsTreeNode,
   type InspectStartResult,
 } from "@shared/protocol";
 import { injectIntoPage, isInjected } from "./bridge/inject";
@@ -35,6 +36,13 @@ import {
 import { findNode, getState, setState, subscribe } from "./store";
 import { pushSample, resetProfiler } from "./profilerStore";
 import {
+  defaultExpanded,
+  getEcsState,
+  pushEcsSystemSample,
+  resetEcs,
+  setEcsState,
+} from "./ecsStore";
+import {
   locateNodeInTree,
   previewNodeInTree,
   selectNodeInPanel,
@@ -42,6 +50,9 @@ import {
 import { NodeTree } from "./panels/NodeTree";
 import { NodeDetails } from "./panels/NodeDetails";
 import { Profiler } from "./panels/Profiler";
+import { EntityTree } from "./panels/EntityTree";
+import { EntityDetails } from "./panels/EntityDetails";
+import { SystemProfiler } from "./panels/SystemProfiler";
 import "golden-layout/dist/css/goldenlayout-base.css";
 import "golden-layout/dist/css/themes/goldenlayout-dark-theme.css";
 import "antd/dist/antd.dark.css";
@@ -49,8 +60,11 @@ import "./app.css";
 
 const PANELS = [
   { key: "win-NodeTree", type: "NodeTree", title: "节点树" },
+  { key: "win-EntityTree", type: "EntityTree", title: "实体树" },
   { key: "win-NodeDetails", type: "NodeDetails", title: "节点详情" },
+  { key: "win-EntityDetails", type: "EntityDetails", title: "实体详情" },
   { key: "win-Profiler", type: "Profiler", title: "性能" },
+  { key: "win-SystemProfiler", type: "SystemProfiler", title: "系统性能" },
 ] as const;
 
 const defaultLayout: LayoutConfig = {
@@ -64,9 +78,19 @@ const defaultLayout: LayoutConfig = {
     type: "row",
     content: [
       {
-        type: "component",
-        componentType: "NodeTree",
-        title: "节点树",
+        type: "stack",
+        content: [
+          {
+            type: "component",
+            componentType: "NodeTree",
+            title: "节点树",
+          },
+          {
+            type: "component",
+            componentType: "EntityTree",
+            title: "实体树",
+          },
+        ],
       },
       {
         type: "stack",
@@ -78,8 +102,18 @@ const defaultLayout: LayoutConfig = {
           },
           {
             type: "component",
+            componentType: "EntityDetails",
+            title: "实体详情",
+          },
+          {
+            type: "component",
             componentType: "Profiler",
             title: "性能",
+          },
+          {
+            type: "component",
+            componentType: "SystemProfiler",
+            title: "系统性能",
           },
         ],
       },
@@ -125,6 +159,36 @@ function openOrFocusPanel(layout: GoldenLayout, type: string, title: string) {
     return;
   }
   layout.addComponent(type, undefined, title);
+}
+
+/** Node tree/details and entity tree/details switch together. */
+const TAB_PAIR: Record<string, { type: string; title: string }> = {
+  NodeTree: { type: "NodeDetails", title: "节点详情" },
+  NodeDetails: { type: "NodeTree", title: "节点树" },
+  EntityTree: { type: "EntityDetails", title: "实体详情" },
+  EntityDetails: { type: "EntityTree", title: "实体树" },
+};
+
+function bindTabPairs(layout: GoldenLayout) {
+  let pairing = false;
+  layout.on("activeContentItemChanged", (item: ComponentItem) => {
+    if (pairing) return;
+    const pair = TAB_PAIR[String(item?.componentType || "")];
+    if (!pair) return;
+    const target = findComponentByType(layout, pair.type);
+    if (target) {
+      const parent = target.parent;
+      if (parent && ContentItem.isStack(parent) && parent.getActiveComponentItem() === target) {
+        return;
+      }
+    }
+    pairing = true;
+    try {
+      openOrFocusPanel(layout, pair.type, pair.title);
+    } finally {
+      pairing = false;
+    }
+  });
 }
 
 export function App() {
@@ -176,6 +240,8 @@ export function App() {
       await callRpc(Rpc.refreshSceneData);
       const assets = await callRpc(Rpc.assetsGetAll);
       setState({ assets: (assets as any) || {} });
+      await callRpc(Rpc.ecsSetInterval, getEcsState().pollMs);
+      void callRpc(Rpc.ecsRefresh);
       // Re-apply drag toggle after inject / page reload.
       if (getState().moveEnabled) {
         void callRpc(Rpc.setMoveEnabled, true).catch(() => {});
@@ -292,6 +358,29 @@ export function App() {
     onEvent(Event.nodeDrawCalls, (dc: any) =>
       setState({ nodeDc: dc || EMPTY_NODE_DRAW_CALLS }),
     );
+    onEvent(Event.ecsTree, (tree: any) => {
+      const prev = getEcsState();
+      const next = tree as EcsTreeNode;
+      setEcsState({
+        available: true,
+        tree: next,
+        expandedKeys: prev.expandedKeys.length
+          ? prev.expandedKeys
+          : defaultExpanded(next),
+      });
+    });
+    onEvent(Event.ecsUnavailable, () => {
+      setEcsState({
+        available: false,
+        tree: null,
+        selectedEntityId: null,
+        entityDump: null,
+        systemsRunning: false,
+      });
+    });
+    onEvent(Event.ecsSystemSample, (sample: any) => {
+      if (sample) pushEcsSystemSample(sample);
+    });
     onEvent("tabReloaded", (data: any) => {
       const inspected = getInspectedTabId();
       if (inspected == null) return;
@@ -299,6 +388,7 @@ export function App() {
       message.loading({ content: "页面正在刷新，请稍等...", key: "inj", duration: 0 });
       // The injected collector is gone with the old page.
       resetProfiler();
+      resetEcs();
       void callRpc(Rpc.highlightNode, null).catch(() => {});
       setState({
         injecting: true,
@@ -376,6 +466,15 @@ export function App() {
     layout.registerComponentFactoryFunction("Profiler", (container) => {
       mountReact(container, <Profiler />);
     });
+    layout.registerComponentFactoryFunction("EntityTree", (container) => {
+      mountReact(container, <EntityTree />);
+    });
+    layout.registerComponentFactoryFunction("EntityDetails", (container) => {
+      mountReact(container, <EntityDetails />);
+    });
+    layout.registerComponentFactoryFunction("SystemProfiler", (container) => {
+      mountReact(container, <SystemProfiler />);
+    });
 
     let config = defaultLayout;
     try {
@@ -408,6 +507,7 @@ export function App() {
         layout.loadLayout(defaultLayout);
       }
       layout.setSize(host.clientWidth, host.clientHeight);
+      bindTabPairs(layout);
     };
 
     requestAnimationFrame(start);

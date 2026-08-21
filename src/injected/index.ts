@@ -3,6 +3,7 @@ import { hookAssets } from "./assets";
 import { hookInspect } from "./inspect";
 import { sendEvent } from "./message";
 import { hookMove } from "./move";
+import { hookEcs } from "./ecs";
 import { hookProfiler } from "./profiler";
 import { hookScene } from "./scene";
 import { hookSourceResolve } from "./sourceResolve";
@@ -15,6 +16,7 @@ if (typeof cc !== "undefined") {
   hookMove();
   hookInspect();
   hookProfiler();
+  hookEcs();
   hookSourceResolve();
   sendEvent(Event.loadingComplete, null);
 } else {

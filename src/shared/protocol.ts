@@ -59,6 +59,16 @@ export const Rpc = {
   profilerStart: "profiler::start",
   /** Unhook director frame events and reset counters. */
   profilerStop: "profiler::stop",
+  /** Walk the scene for a Battle world and push ecs::tree (or ecs::unavailable). */
+  ecsRefresh: "ecs::refresh",
+  /** Dump one entity's live components. Payload: entity id (number). */
+  ecsGetEntity: "ecs::getEntity",
+  /** Wrap System.onUpdate and start pushing ecs::systemSample. */
+  ecsProfilerStart: "ecs::profilerStart",
+  /** Restore System.onUpdate and stop samples. */
+  ecsProfilerStop: "ecs::profilerStop",
+  /** ECS tree / system-sample push interval in ms. 0 pauses auto push. */
+  ecsSetInterval: "ecs::setInterval",
   /** Resolve a component's script URL for Sources. */
   resolveComponentSource: "resolveComponentSource",
   /** Resolve a Button/EventHandler binding's script URL (+ search text). */
@@ -152,6 +162,9 @@ export const Event = {
   assetsClear: "assets::clear",
   profilerSample: "profiler::sample",
   nodeDrawCalls: "profiler::nodeDrawCalls",
+  ecsTree: "ecs::tree",
+  ecsSystemSample: "ecs::systemSample",
+  ecsUnavailable: "ecs::unavailable",
 } as const;
 
 /** Draw calls of the last drawn frame, numbered in submit order. */
@@ -192,7 +205,7 @@ export const NEW_KEY = "[CC-RUNTIME::NEW_KEY]";
 
 /** Bump the suffix whenever defaultLayout gains a panel, otherwise saved
  * layouts keep hiding the new one. */
-export const LAYOUT_STORAGE_KEY = "cc-runtime::layoutConfig::v2";
+export const LAYOUT_STORAGE_KEY = "cc-runtime::layoutConfig::v3";
 
 export type BatchItem = { id: string; type: string; data?: unknown };
 export type Envelope = { type: string; id?: string; data?: unknown };
@@ -226,4 +239,39 @@ export interface NodeDetails {
   };
   components?: any[];
   rootAttrs?: any[];
+}
+
+/** Virtual ECS tree: world → type group → entity. */
+export interface EcsTreeNode {
+  id: string;
+  name: string;
+  kind: "world" | "group" | "entity";
+  entityId?: number;
+  componentNames?: string[];
+  children?: EcsTreeNode[];
+}
+
+export interface EcsEntityDump {
+  id: number;
+  type: number | string;
+  typeName: string;
+  camp: number | string;
+  campName: string;
+  templateId: string;
+  components: Record<string, unknown>;
+}
+
+export interface EcsSystemStat {
+  name: string;
+  avgMs: number;
+  peakMs: number;
+  calls: number;
+  entityCount?: number;
+}
+
+/** One aggregation window of per-system onUpdate times. */
+export interface EcsSystemSample {
+  t: number;
+  frameMs: number;
+  systems: EcsSystemStat[];
 }
