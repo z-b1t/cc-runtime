@@ -139,6 +139,36 @@ function AttrPanel({
   );
 }
 
+function CollapsibleSubAttr({
+  title,
+  count,
+  children,
+}: {
+  title: string;
+  count: number;
+  children: React.ReactNode;
+}) {
+  const entityId = getEcsState().selectedEntityId;
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    setOpen(false);
+  }, [entityId]);
+
+  return (
+    <div className="custom-sub-attr">
+      <div
+        className={`custom-sub-attr-title custom-sub-attr-toggle${open ? " open" : ""}`}
+        onClick={() => setOpen((v) => !v)}
+        role="button"
+      >
+        <span className="custom-sub-attr-caret" />
+        {capitalize(title)} ({count})
+      </div>
+      {open ? children : null}
+    </div>
+  );
+}
+
 function AttrField({ title, data }: { title: string; data: unknown }) {
   if (isPrimitive(data)) {
     return (
@@ -158,12 +188,11 @@ function AttrField({ title, data }: { title: string; data: unknown }) {
       );
     }
     return (
-      <div className="custom-sub-attr">
-        <div className="custom-sub-attr-title">{capitalize(title)}</div>
+      <CollapsibleSubAttr title={title} count={data.length}>
         {data.map((v, i) => (
           <AttrField key={i} title={String(i)} data={v} />
         ))}
-      </div>
+      </CollapsibleSubAttr>
     );
   }
   const obj = data as Record<string, unknown>;
@@ -184,12 +213,11 @@ function AttrField({ title, data }: { title: string; data: unknown }) {
     );
   }
   return (
-    <div className="custom-sub-attr">
-      <div className="custom-sub-attr-title">{capitalize(title)}</div>
+    <CollapsibleSubAttr title={title} count={keys.length}>
       {keys.map((k) => (
         <AttrField key={k} title={k} data={obj[k]} />
       ))}
-    </div>
+    </CollapsibleSubAttr>
   );
 }
 
