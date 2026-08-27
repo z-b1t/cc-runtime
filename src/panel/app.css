@@ -1161,10 +1161,41 @@
   padding: 4px 12px;
   font-size: 12px;
   border-top: 1px solid #303030;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .footer a {
   color: #177ddc;
+}
+
+.update-banner {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  line-height: 20px;
+  background: #16324a;
+  border-bottom: 1px solid #1a4a6e;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.update-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.update-banner .ant-btn {
+  height: 22px;
+  padding: 0 8px;
+  font-size: 12px;
 }
 
 .inject-mask {

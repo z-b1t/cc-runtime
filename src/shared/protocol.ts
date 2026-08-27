@@ -27,6 +27,12 @@ export const Msg = {
   launcherShow: "cc-runtime::launcherShow",
   /** Side panel → background → DevTools page: open a URL in Sources. */
   openInSources: "cc-runtime::openInSources",
+  /** Side panel → background: check GitHub Releases. Payload: { force?: boolean }. */
+  checkUpdate: "cc-runtime::checkUpdate",
+  /** Side panel → background: hide this version until a newer tag appears. */
+  ignoreUpdate: "cc-runtime::ignoreUpdate",
+  /** Side panel → background: refresh the game tab, then reload the extension. */
+  reloadExtension: "cc-runtime::reloadExtension",
 } as const;
 
 export const Rpc = {

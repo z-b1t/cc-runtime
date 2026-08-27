@@ -14,6 +14,7 @@ import {
   ReloadOutlined,
   BorderOuterOutlined,
   StopOutlined,
+  CloudSyncOutlined,
 } from "@ant-design/icons";
 import {
   EMPTY_NODE_DRAW_CALLS,
@@ -53,6 +54,7 @@ import { Profiler } from "./panels/Profiler";
 import { EntityTree } from "./panels/EntityTree";
 import { EntityDetails } from "./panels/EntityDetails";
 import { SystemProfiler } from "./panels/SystemProfiler";
+import { UpdateBanner, checkUpdateNow } from "./UpdateBanner";
 import "golden-layout/dist/css/goldenlayout-base.css";
 import "golden-layout/dist/css/themes/goldenlayout-dark-theme.css";
 import "antd/dist/antd.dark.css";
@@ -578,6 +580,8 @@ export function App() {
           hostRef.current.clientHeight,
         );
       }
+    } else if (key === "update") {
+      checkUpdateNow();
     } else {
       const panel = PANELS.find((p) => p.key === key);
       if (panel && layoutRef.current) {
@@ -612,8 +616,12 @@ export function App() {
           <Menu.Item key="reset" icon={<BorderOuterOutlined />}>
             重置布局
           </Menu.Item>
+          <Menu.Item key="update" icon={<CloudSyncOutlined />}>
+            检查更新
+          </Menu.Item>
         </Menu.SubMenu>
       </Menu>
+      <UpdateBanner />
       <div className="layout-host" ref={hostRef} />
       {injecting && (
         <div className="inject-mask">
@@ -621,7 +629,9 @@ export function App() {
         </div>
       )}
       <div className="footer">
-        {/* <a href="mailto:qq493843456@163.com">联系我: qq493843456@163.com</a> */}
+        <span className="footer-version">
+          v{chrome.runtime.getManifest().version}
+        </span>
       </div>
     </div>
   );

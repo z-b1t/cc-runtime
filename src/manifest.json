@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "cc-runtime",
-  "version": "0.0.1",
+  "version": "0.1.7",
   "description": "Chrome Side Panel extension for debugging Cocos Creator V3 runtime",
   "homepage_url": "https://github.com/z-b1t/cc-runtime",
   "icons": {
@@ -40,6 +40,14 @@
       "128": "assets/icon-128.png"
     }
   },
-  "permissions": ["webNavigation", "sidePanel", "scripting", "tabs"],
+  "permissions": [
+    "webNavigation",
+    "sidePanel",
+    "scripting",
+    "tabs",
+    "alarms",
+    "storage",
+    "downloads"
+  ],
   "host_permissions": ["<all_urls>"]
 }

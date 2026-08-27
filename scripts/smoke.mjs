@@ -35,6 +35,8 @@ ok(exists("dist/assets/icon-16.png"), "dist icon-16");
 ok(exists("dist/assets/icon-128.png"), "dist icon-128");
 ok(contains("dist/manifest.json", '"side_panel"'), "manifest side_panel");
 ok(contains("dist/manifest.json", "default_icon"), "manifest action default_icon");
+ok(contains("dist/manifest.json", `"version": "${JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).version}"`), "manifest version stamped from package.json");
+ok(contains("dist/manifest.json", "downloads"), "manifest downloads permission");
 ok(!contains("dist/manifest.json", "devtools_page"), "manifest no devtools_page");
 ok(contains("dist/injected.js", "loadingComplete"), "injected loadingComplete");
 ok(contains("dist/injected.js", "refreshSceneData"), "injected refreshSceneData");

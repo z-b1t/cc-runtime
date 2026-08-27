@@ -56,7 +56,15 @@ async function main() {
   await buildExtensionScripts();
   await viteBuild({ configFile: path.join(root, "vite.config.ts") });
 
-  copyFile(path.join(root, "src/manifest.json"), path.join(dist, "manifest.json"));
+  const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "src/manifest.json"), "utf8"),
+  );
+  manifest.version = pkg.version;
+  fs.writeFileSync(
+    path.join(dist, "manifest.json"),
+    `${JSON.stringify(manifest, null, 2)}\n`,
+  );
   copyFile(
     path.join(root, "src/devtools/index.html"),
     path.join(dist, "devtools.html"),

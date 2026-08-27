@@ -1,4 +1,7 @@
 import { Msg } from "../shared/protocol";
+import { handleUpdateMessage, initAutoUpdate } from "./update";
+
+initAutoUpdate();
 
 void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 
@@ -61,6 +64,29 @@ function onPanelClosed(tabId: number) {
   notifyTab(tabId, Msg.launcherRelayout);
 }
 
+/** Tear down the live inject first, then reload the unpacked extension. */
+async function reloadExtensionSafely(tabId?: number) {
+  let id = tabId;
+  if (id == null) {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      lastFocusedWindow: true,
+    });
+    id = tab?.id;
+  }
+  if (id != null) {
+    clearPendingOpen(id);
+    disablePanelForTab(id);
+    try {
+      await chrome.tabs.reload(id);
+    } catch (err) {
+      console.warn("[cc-runtime] tab reload before extension reload failed:", err);
+    }
+  }
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  chrome.runtime.reload();
+}
+
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name === "cc-runtime-devtools") {
     let boundTabId: number | undefined;
@@ -107,6 +133,9 @@ chrome.runtime.onConnect.addListener((port) => {
 });
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (handleUpdateMessage(msg as { type?: string; force?: boolean }, sendResponse)) {
+    return true;
+  }
   const type = (msg as { type?: string })?.type;
 
   if (type === Msg.openInSources) {
@@ -163,6 +192,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (tabId == null) return;
     onPanelClosed(tabId);
     return;
+  }
+
+  if (type === Msg.reloadExtension) {
+    const tabId = (msg as { tabId?: number }).tabId;
+    // Keep the message channel open so the worker is not killed before reload().
+    void reloadExtensionSafely(typeof tabId === "number" ? tabId : undefined);
+    return true;
   }
 
   if (type !== Msg.openSidePanel) return;
