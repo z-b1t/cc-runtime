@@ -1,8 +1,10 @@
 import { message } from "antd";
 import { callRpc, Rpc } from "./bridge/rpc";
-import { findPathIds, getState, setState } from "./store";
+import { collectDisplayedIds, findPathIds, getState, setState } from "./store";
 
 let flashTimer: ReturnType<typeof setTimeout> | null = null;
+/** Origin of Shift+click range select; kept until the next plain click. */
+let rangeAnchorId: string | null = null;
 
 /** Blink the row and bring it into view once the tree has re-rendered. */
 function flashRow(id: string, flash: boolean) {
@@ -17,9 +19,11 @@ function flashRow(id: string, flash: boolean) {
 
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      document
-        .querySelector(".ant-tree-treenode-selected")
-        ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      const row =
+        document.querySelector(
+          `.ant-tree-treenode[data-node-id="${CSS.escape(id)}"]`,
+        ) || document.querySelector(".ant-tree-treenode-selected");
+      row?.scrollIntoView({ block: "nearest", behavior: "smooth" });
     });
   });
 }
@@ -38,12 +42,17 @@ export function locateNodeInTree(id: string, opts?: { flash?: boolean }) {
 }
 
 /** Select a node in the panel tree, expand ancestors, load details, flash row. */
-export async function selectNodeInPanel(id: string, opts?: { flash?: boolean }) {
+export async function selectNodeInPanel(
+  id: string,
+  opts?: { flash?: boolean; selectedIds?: string[]; keepAnchor?: boolean },
+) {
   if (!id) return;
   const ancestors = findPathIds(getState().scene, id) || [];
   const expanded = new Set([...getState().expandedKeys, ...ancestors]);
+  if (!opts?.keepAnchor || !rangeAnchorId) rangeAnchorId = id;
   setState({
     selectedId: id,
+    selectedIds: opts?.selectedIds ?? [id],
     details: null,
     expandedKeys: [...expanded],
   });
@@ -64,6 +73,28 @@ export async function selectNodeInPanel(id: string, opts?: { flash?: boolean }) 
   }
 
   flashRow(id, opts?.flash !== false);
+}
+
+/** Shift+click: select the visible-tree range from the last plain click to `id`. */
+export async function selectNodeRange(id: string) {
+  if (!id) return;
+  const { scene, search, compTypeFilter, expandedKeys, selectedId } = getState();
+  const ordered = collectDisplayedIds(scene, expandedKeys, {
+    keyword: search,
+    compTypes: compTypeFilter,
+  });
+  const fromId = rangeAnchorId || selectedId || id;
+  const a = ordered.indexOf(fromId);
+  const b = ordered.indexOf(id);
+  const selectedIds =
+    a < 0 || b < 0
+      ? [id]
+      : ordered.slice(Math.min(a, b), Math.max(a, b) + 1);
+  await selectNodeInPanel(id, {
+    flash: false,
+    selectedIds,
+    keepAnchor: true,
+  });
 }
 
 /**

@@ -13,7 +13,7 @@ import {
   type AppState,
 } from "../store";
 import type { NodeDrawCalls, SceneNodeData } from "@shared/protocol";
-import { locateNodeInTree, selectNodeInPanel } from "../selectNode";
+import { locateNodeInTree, selectNodeInPanel, selectNodeRange } from "../selectNode";
 import { hasCustomScript, resolveNodeIcon, typescriptBadgeIcon } from "../cocosNodeIcon";
 import { CocosIcon } from "../CocosIcon";
 
@@ -64,13 +64,17 @@ function toTreeData(
   nodeDc: NodeDrawCalls,
   isRoot = false,
 ): DataNode {
-  const { tip, ...gutter } = dcGutter(node, nodeDc, isRoot);
+  const { tip, className, "data-dc": dataDc } = dcGutter(node, nodeDc, isRoot);
   const showTs = hasCustomScript(node);
-  const rowClass = [gutter.className, hoverNodeId === node.id ? "is-hovered" : null]
+  const rowClass = [className, hoverNodeId === node.id ? "is-hovered" : null]
     .filter(Boolean)
     .join(" ");
+  const dataAttrs = {
+    "data-node-id": node.id,
+    ...(dataDc ? { "data-dc": dataDc } : {}),
+  };
   return {
-    ...gutter,
+    ...dataAttrs,
     className: rowClass || undefined,
     key: node.id,
     title: (
@@ -168,12 +172,16 @@ export function NodeTree() {
   );
 
   const onSelect = useCallback(async (keys: React.Key[], info?: any) => {
+    const id = String(info?.node?.key || keys[0] || "");
+    if (!id) return;
     if (info?.nativeEvent?.altKey) {
-      toggleSubtree(String(info.node?.key || keys[0] || ""));
+      toggleSubtree(id);
       return;
     }
-    const id = String(keys[0] || "");
-    if (!id) return;
+    if (info?.nativeEvent?.shiftKey) {
+      await selectNodeRange(id);
+      return;
+    }
     await selectNodeInPanel(id, { flash: false });
   }, []);
 
@@ -238,7 +246,14 @@ export function NodeTree() {
   };
 
   return (
-    <div className="panel-body">
+    <div
+      className="panel-body"
+      onMouseDown={(e) => {
+        if (e.shiftKey && (e.target as HTMLElement).closest?.(".ant-tree")) {
+          e.preventDefault();
+        }
+      }}
+    >
       <Space style={{ marginBottom: 8 }} wrap>
         <Input.Search
           placeholder="查找节点"
@@ -284,9 +299,10 @@ export function NodeTree() {
         className={snap.nodeDc.total > 0 ? "tree-dc-gutter" : undefined}
         draggable={{ icon: false }}
         blockNode
+        multiple
         allowDrop={() => true}
         treeData={treeData}
-        selectedKeys={snap.selectedId ? [snap.selectedId] : []}
+        selectedKeys={snap.selectedIds}
         expandedKeys={snap.expandedKeys}
         onExpand={(keys, info) => {
           if (info?.nativeEvent?.altKey) {

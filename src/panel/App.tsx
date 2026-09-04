@@ -34,7 +34,7 @@ import {
   setInspectedTabId,
   waitForEvent,
 } from "./bridge/rpc";
-import { findNode, getState, setState, subscribe } from "./store";
+import { collectIds, findNode, getState, setState, subscribe } from "./store";
 import { pushSample, resetProfiler } from "./profilerStore";
 import {
   defaultExpanded,
@@ -199,11 +199,13 @@ export function App() {
   const [injecting, setInjecting] = useState(true);
   const [inspecting, setInspecting] = useState(false);
   const [moveEnabled, setMoveEnabled] = useState(false);
+  const [selectedCount, setSelectedCount] = useState(0);
 
   useEffect(() => subscribe(() => {
     setInjecting(getState().injecting);
     setInspecting(getState().inspecting);
     setMoveEnabled(getState().moveEnabled);
+    setSelectedCount(getState().selectedIds.length);
   }), []);
 
   const bootstrap = useCallback(async () => {
@@ -259,7 +261,8 @@ export function App() {
   useEffect(() => {
     onEvent(Event.sceneData, (data) => {
       const scene = data as any;
-      const { scene: prevScene, expandedKeys } = getState();
+      const { scene: prevScene, expandedKeys, selectedIds } = getState();
+      const alive = selectedIds.length ? new Set(collectIds(scene)) : null;
       setState({
         scene,
         // New scene: expand the root so its children show. Same scene
@@ -270,6 +273,9 @@ export function App() {
               ? [scene.id]
               : []
             : expandedKeys,
+        ...(alive
+          ? { selectedIds: selectedIds.filter((id) => alive.has(id)) }
+          : {}),
       });
     });
     onEvent(Event.inspectHover, (payload: any) => {
@@ -399,6 +405,7 @@ export function App() {
         scene: null,
         details: null,
         selectedId: null,
+        selectedIds: [],
         flashNodeId: null,
         hoverNodeId: null,
         nodeDc: EMPTY_NODE_DRAW_CALLS,
@@ -629,6 +636,9 @@ export function App() {
         </div>
       )}
       <div className="footer">
+        <span className="footer-status">
+          {selectedCount > 0 ? `已选 ${selectedCount} 个节点` : ""}
+        </span>
         <span className="footer-version">
           v{chrome.runtime.getManifest().version}
         </span>

@@ -29,10 +29,9 @@ function getScreenAdapter(): any {
 }
 
 function getDpr(): number {
-  const sa = getScreenAdapter();
-  const dpr = sa?.devicePixelRatio;
+  const dpr = cc.screen?.devicePixelRatio ?? getScreenAdapter()?.devicePixelRatio;
   if (typeof dpr === "number" && dpr > 0) return dpr;
-  return cc.view?.getDevicePixelRatio?.() || window.devicePixelRatio || 1;
+  return window.devicePixelRatio || 1;
 }
 
 export function clientToScreen(clientX: number, clientY: number): Vec2Like {

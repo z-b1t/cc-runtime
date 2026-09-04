@@ -12,6 +12,8 @@ export type AppState = {
   moveEnabled: boolean;
   scene: SceneNodeData | null;
   selectedId: string | null;
+  /** All tree-selected node ids; `selectedId` is the primary (details / highlight). */
+  selectedIds: string[];
   details: NodeDetails | null;
   search: string;
   compTypeFilter: string[];
@@ -32,6 +34,7 @@ let state: AppState = {
   moveEnabled: false,
   scene: null,
   selectedId: null,
+  selectedIds: [],
   details: null,
   search: "",
   compTypeFilter: [],
@@ -152,6 +155,27 @@ export function collectMatchingNodes(
       out.push({ ...n, children: [] });
     }
     n.children?.forEach(walk);
+  };
+  walk(node);
+  return out;
+}
+
+/** Ids currently shown in the node tree (honours expand state and filters). */
+export function collectDisplayedIds(
+  node: SceneNodeData | null,
+  expandedKeys: readonly string[],
+  filter: MatchFilter,
+): string[] {
+  const matches = collectMatchingNodes(node, filter);
+  if (matches) return matches.map((n) => n.id);
+  const expanded = new Set(expandedKeys);
+  const out: string[] = [];
+  const walk = (n: SceneNodeData | null | undefined) => {
+    if (!n) return;
+    out.push(n.id);
+    if (n.children?.length && expanded.has(n.id)) {
+      n.children.forEach(walk);
+    }
   };
   walk(node);
   return out;

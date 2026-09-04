@@ -999,6 +999,7 @@
   padding: 0 18px 0 0;
   align-items: center;
   width: 100%;
+  user-select: none;
 }
 
 /* Child row starts at the end of the parent's node icon:
@@ -1163,8 +1164,15 @@
   border-top: 1px solid #303030;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
   color: rgba(255, 255, 255, 0.45);
+}
+
+.footer-status {
+  min-width: 0;
+}
+
+.footer-version {
+  margin-left: auto;
 }
 
 .footer a {
